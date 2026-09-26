@@ -511,8 +511,9 @@ public class MainActivity extends Activity {
 
             drawHand(c,w/2,h-170);
 
-            trucoRect.set(w/2-82,h-102,w/2+82,h-52);
-            button(c,trucoRect,"TRUCO!",Color.rgb(190,45,45),17);
+            // Botão TRUCO fica no lado direito, separado das cartas da mão.
+            trucoRect.set(w-105,h-112,w-15,h-58);
+            button(c,trucoRect,"TRUCO!",Color.rgb(190,45,45),15);
             if(trickNo>1 && current==0 && !pendingRaise){
                 coverRect.set(w/2-82,h-158,w/2+82,h-110);
                 button(c,coverRect,"COBERTA",Color.rgb(70,80,90),13);

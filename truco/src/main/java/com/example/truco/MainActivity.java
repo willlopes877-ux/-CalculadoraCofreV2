@@ -444,7 +444,12 @@ public class MainActivity extends Activity {
             c.drawText("TRUCO ARENA",w/2,28,p);
             p.setTextSize(15);c.drawText("VOCÊ + IA  "+teamAPoints+"  ×  "+teamBPoints+"  RIVAIS",w/2,52,p);
             p.setTextSize(12);p.setColor(Color.rgb(215,230,220));
-            c.drawText("Mão "+round+" • Vale "+stake+" • "+tricksA+"×"+tricksB,w/2,75,p);\n\n            // VIRA: carta virada do baralho, sempre visível na mesa.\n            p.setColor(Color.WHITE); p.setTextSize(11);\n            c.drawText("VIRA",w/2,112,p);\n            if(vira!=null) drawCard(c,vira,w/2-32,120,64,88,true);
+            c.drawText("Mão "+round+" • Vale "+stake+" • "+tricksA+"×"+tricksB,w/2,75,p);
+
+            // VIRA: carta virada do baralho, sempre visível na mesa.
+            p.setColor(Color.WHITE); p.setTextSize(11);
+            c.drawText("VIRA",w/2,112,p);
+            if(vira!=null) drawCard(c,vira,w/2-32,120,64,88,true);
             p.setColor(Color.rgb(230,240,232)); p.setTextSize(9);
             c.drawText("MANILHA: próxima carta • ♣ > ♥ > ♠ > ♦",w/2,214,p);
 

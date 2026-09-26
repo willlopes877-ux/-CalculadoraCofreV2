@@ -534,26 +534,23 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            // Cartas maiores e separadas no centro da mesa.
-            // A posição identifica o jogador, sem nomes sobre a mesa.
-            final float cw=72, ch=100;
+            // Todas as cartas jogadas ficam juntas no centro da mesa.
+            // Tamanho maior para facilitar a leitura no celular.
+            final float cw=96, ch=112;
             final float centerX=w/2f;
+            final float gap=8;
+            final float leftX=centerX-cw-gap/2f;
+            final float rightX=centerX+gap/2f;
+            final float topY=390;
+            final float bottomY=500;
 
             for(int i=0;i<n;i++){
                 Played x=trick.get(i);
                 float left, top;
-
-                switch(x.player){
-                    case 2: // rival de cima
-                        left=centerX-cw/2f; top=382; break;
-                    case 1: // parceira à esquerda
-                        left=centerX-cw-48; top=447; break;
-                    case 3: // rival à direita
-                        left=centerX+48; top=447; break;
-                    default: // você embaixo
-                        left=centerX-cw/2f; top=512; break;
-                }
-
+                if(i==0){ left=leftX; top=topY; }
+                else if(i==1){ left=rightX; top=topY; }
+                else if(i==2){ left=leftX; top=bottomY; }
+                else { left=rightX; top=bottomY; }
                 drawCard(c,x.card,left,top,cw,ch,true);
             }
         }

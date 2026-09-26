@@ -390,10 +390,10 @@ public class MainActivity extends Activity {
             p.setColor(Color.rgb(45,185,105));p.setTextSize(22);c.drawText("ARENA IA",w/2,178,p);
             p.setColor(Color.LTGRAY);p.setTextSize(14);c.drawText("TRUCO PAULISTA • estratégia • blefe",w/2,205,p);
 
-            playRect.set(w/2-145,270,w/2+145,332);
+            playRect.set(w/2-190,250,w/2+190,330);
             howRect.set(w/2-145,350,w/2+145,405);
             settingsRect.set(w/2-145,423,w/2+145,478);
-            button(c,playRect,"JOGAR",Color.rgb(35,145,78),20);
+            button(c,playRect,"JOGAR",Color.rgb(35,145,78),26);
             button(c,howRect,"COMO JOGAR",Color.rgb(42,50,58),17);
             button(c,settingsRect,"CONFIGURAÇÕES",Color.rgb(42,50,58),17);
 

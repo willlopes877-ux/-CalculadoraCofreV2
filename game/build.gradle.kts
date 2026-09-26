@@ -4,6 +4,7 @@ plugins {
 
 android {
     namespace = "com.example.gamev2"
+    buildFeatures { buildConfig = true }
     compileSdk = 36
 
     defaultConfig {
@@ -12,6 +13,7 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "2.0"
+        buildConfigField("String", "AI_ENDPOINT", "\"\")
     }
 
     compileOptions {

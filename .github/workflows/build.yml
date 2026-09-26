@@ -1,4 +1,4 @@
-name: Compilar e publicar AAB
+name: Compilar Calculadora e Jogo V2
 
 on:
   push:
@@ -28,24 +28,33 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Compilar APK e Android App Bundle
-        run: gradle --no-daemon --stacktrace --info assembleDebug bundleRelease
+      - name: Compilar calculadora e jogo V2
+        run: gradle --no-daemon --stacktrace assembleDebug bundleRelease :game:assembleDebug
 
-      - name: Verificar APK e AAB
+      - name: Verificar arquivos gerados
         run: |
           test -f app/build/outputs/apk/debug/app-debug.apk
           test -f app/build/outputs/bundle/release/app-release.aab
+          test -f game/build/outputs/apk/debug/game-debug.apk
           ls -lh app/build/outputs/apk/debug/app-debug.apk
+          ls -lh game/build/outputs/apk/debug/game-debug.apk
           ls -lh app/build/outputs/bundle/release/app-release.aab
 
-      - name: Disponibilizar APK de teste como artefato
+      - name: Disponibilizar APK da calculadora
         uses: actions/upload-artifact@v4
         with:
-          name: CalculadoraCofreV2-APK-v4.0
+          name: CalculadoraCofreV2-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Disponibilizar AAB como artefato
+      - name: Disponibilizar APK do jogo V2
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArenaHeroV2-APK-v2.0
+          path: game/build/outputs/apk/debug/game-debug.apk
+          if-no-files-found: error
+
+      - name: Disponibilizar AAB da calculadora
         uses: actions/upload-artifact@v4
         with:
           name: CalculadoraCofreV2-AAB
@@ -54,14 +63,13 @@ jobs:
 
       - name: Preparar arquivos para Release
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk CalculadoraCofreV2-4.0-teste.apk
+          cp app/build/outputs/apk/debug/app-debug.apk CalculadoraCofreV2-teste.apk
+          cp game/build/outputs/apk/debug/game-debug.apk ArenaHeroV2-2.0-teste.apk
           cp app/build/outputs/bundle/release/app-release.aab CalculadoraCofreV2.aab
 
       - name: Publicar Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="play-v4.0-build-${{ github.run_number }}"
-          gh release create "$TAG" CalculadoraCofreV2-4.0-teste.apk CalculadoraCofreV2.aab \
-            --title "Calculadora Cofre V2 - 4.0 - $TAG" \
-            --generate-notes
+          TAG="v2.0-build-${{ github.run_number }}"
+          gh release create "$TAG" CalculadoraCofreV2-teste.apk ArenaHeroV2-2.0-teste.apk CalculadoraCofreV2.aab             --title "Jogo Arena Hero V2 + Calculadora - $TAG"             --generate-notes

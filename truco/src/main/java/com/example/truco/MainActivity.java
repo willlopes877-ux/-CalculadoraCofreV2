@@ -359,15 +359,15 @@ public class MainActivity extends Activity {
             c.drawText("TRUCO ARENA",w/2,28,p);
             p.setTextSize(15);c.drawText("VOCÊ + IA  "+teamAPoints+"  ×  "+teamBPoints+"  RIVAIS",w/2,52,p);
             p.setTextSize(12);p.setColor(Color.rgb(215,230,220));
-            c.drawText("Mão "+round+" • Vira "+vira.label()+" • Vale "+stake+" • "+tricksA+"×"+tricksB,w/2,75,p);
+            c.drawText("Mão "+round+" • Vale "+stake+" • "+tricksA+"×"+tricksB,w/2,75,p);\n\n            // VIRA: carta virada do baralho, sempre visível na mesa.\n            p.setColor(Color.WHITE); p.setTextSize(11);\n            c.drawText("VIRA",w/2,112,p);\n            if(vira!=null) drawCard(c,vira,w/2-32,120,64,88,true);
 
             drawOpponent(c,players[2],w/2,132);
             drawTeammate(c,players[1],70,200);
             drawOpponent(c,players[3],w-70,200);
 
             // Área central: cartas jogadas ficam visíveis até resolver a vaza.
-            p.setColor(Color.argb(80,0,0,0));c.drawRoundRect(35,245,w-35,430,24,24,p);
-            p.setColor(Color.WHITE);p.setTextSize(12);c.drawText("MESA",w/2,264,p);
+            p.setColor(Color.argb(80,0,0,0));c.drawRoundRect(35,225,w-35,445,24,24,p);
+            p.setColor(Color.WHITE);p.setTextSize(12);c.drawText("MESA",w/2,220,p);
             drawPlayedCards(c,w,h);
 
             p.setTextSize(13);p.setColor(Color.WHITE);
@@ -389,13 +389,13 @@ public class MainActivity extends Activity {
             int n=trick.size();
             if(n==0){
                 p.setColor(Color.argb(100,255,255,255));p.setTextSize(14);
-                c.drawText("Jogue uma carta",w/2,350,p);
+                c.drawText("Jogue uma carta",w/2,365,p);
                 return;
             }
             for(int i=0;i<n;i++){
                 Played x=trick.get(i);
                 float cx=w/2+(i-(n-1)/2f)*88;
-                float cy=305+(i%2)*28;
+                float cy=285+(i%2)*28;
                 drawCard(c,x.card,cx-32,cy,64,88,true);
                 p.setColor(Color.WHITE);p.setTextSize(10);
                 c.drawText(x.player==0?"VOCÊ":players[x.player].name,cx,cy+102,p);

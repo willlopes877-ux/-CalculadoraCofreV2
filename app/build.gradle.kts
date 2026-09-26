@@ -3,15 +3,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.calculatorvault"
+    namespace = "com.willlopes.ascension"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.calculatorvault"
+        applicationId = "com.willlopes.ascension"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "4.0"
+        versionCode = 1
+        versionName = "1.0"
     }
 
     compileOptions {

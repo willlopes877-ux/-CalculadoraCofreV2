@@ -1,12 +1,17 @@
-name: Compilar Calculadora, Arena Hero e Truco V1
+name: Compilar Calculadora, Arena Hero e Truco V2
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: android-build-main
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -56,10 +61,10 @@ jobs:
           path: game/build/outputs/apk/debug/game-debug.apk
           if-no-files-found: error
 
-      - name: Disponibilizar APK do Truco V1
+      - name: Disponibilizar APK do Truco V2
         uses: actions/upload-artifact@v4
         with:
-          name: TrucoIA-V1-APK
+          name: TrucoIA-V2-APK
           path: truco/build/outputs/apk/debug/truco-debug.apk
           if-no-files-found: error
 
@@ -74,7 +79,7 @@ jobs:
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk CalculadoraCofreV2-teste.apk
           cp game/build/outputs/apk/debug/game-debug.apk ArenaHeroV2-2.0-teste.apk
-          cp truco/build/outputs/apk/debug/truco-debug.apk TrucoIA-V1-teste.apk
+          cp truco/build/outputs/apk/debug/truco-debug.apk TrucoIA-V2-teste.apk
           cp app/build/outputs/bundle/release/app-release.aab CalculadoraCofreV2.aab
 
       - name: Publicar Release
@@ -82,6 +87,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v2.0-build-${{ github.run_number }}"
-          gh release create "$TAG" CalculadoraCofreV2-teste.apk ArenaHeroV2-2.0-teste.apk TrucoIA-V1-teste.apk CalculadoraCofreV2.aab \
-            --title "Truco IA V1 + Arena Hero + Calculadora - $TAG" \
-            --generate-notes
+          gh release create "$TAG" CalculadoraCofreV2-teste.apk ArenaHeroV2-2.0-teste.apk TrucoIA-V2-teste.apk CalculadoraCofreV2.aab             --title "Truco IA V2 + Arena Hero + Calculadora - $TAG"             --generate-notes

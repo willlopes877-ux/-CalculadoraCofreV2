@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
         Player[] players=new Player[4];
         Card vira;
 
-        int teamAPoints=0, teamBPoints=0, stake=1, current=0, round=1, tricksA=0, tricksB=0;
+        int teamAPoints=0, teamBPoints=0, stake=1, current=0, round=1, tricksA=0, tricksB=0, dealer=3;
         boolean finished=false, waiting=false, elevenDecision=false;
         int screen=0; // 0 menu, 1 match, 2 how-to, 3 settings
         String status="Sua vez — escolha uma carta";
@@ -66,8 +66,8 @@ public class MainActivity extends Activity {
 
         void startMatch(){
             teamAPoints=teamBPoints=0;
-            round=1; finished=false; screen=1;
-            newHand(0);
+            round=1; finished=false; screen=1; dealer=3;
+            newHand((dealer+1)%4);
         }
 
         void newHand(int first){
@@ -79,8 +79,19 @@ public class MainActivity extends Activity {
             vira=deck.remove(0); current=first;
             if(teamAPoints==11){
                 elevenDecision=true;
-                status="MÃO DE 11 — veja a parceira e decida!";
+                status="MÃO DE 11 — sua dupla está em 11. Decida!";
                 invalidate(); return;
+            }
+            if(teamBPoints==11){
+                // Os rivais decidem automaticamente com base nas cartas.
+                if(aiAcceptTruco()){
+                    stake=3;
+                    status="MÃO DE 11 — rivais aceitaram jogar valendo 3.";
+                }else{
+                    teamAPoints++;
+                    status="MÃO DE 11 — rivais correram. Sua dupla +1.";
+                    if(teamAPoints>=12){ finished=true; invalidate(); return; }
+                }
             }
             status=current==0?"Sua vez!":players[current].name+" começa.";
             invalidate();
@@ -207,11 +218,25 @@ public class MainActivity extends Activity {
         void resolveTrick(){
             int best=-1,bestStrength=-1; boolean tie=false;
             for(Played x:trick){
-                int s=strength(x.card);
-                if(s>bestStrength){bestStrength=s;best=x.player;tie=false;}
-                else if(s==bestStrength) tie=true;
+                int st=strength(x.card);
+                if(st>bestStrength){bestStrength=st;best=x.player;tie=false;}
+                else if(st==bestStrength) tie=true;
             }
-            int winner= tie ? (trickWinners.size()>0?trickWinners.get(trickWinners.size()-1):current) : best;
+
+            // Regras de empate do Truco Paulista:
+            // empate na 1a vaza: próxima vaza vale para decidir;
+            // empate depois de uma vaza ganha: vence quem ganhou a anterior.
+            int winner;
+            if(tie){
+                if(trickWinners.isEmpty()){
+                    winner=current; // empate na primeira: mão segue para a próxima
+                }else{
+                    winner=trickWinners.get(trickWinners.size()-1);
+                }
+            }else{
+                winner=best;
+            }
+
             trickWinners.add(winner);
             if(players[winner].teamA) tricksA++; else tricksB++;
             status=(players[winner].teamA?"🤝 SUA DUPLA":"🤖 RIVAIS")+" ganharam a vaza!";
@@ -237,15 +262,19 @@ public class MainActivity extends Activity {
                 invalidate(); return;
             }
             round++;
-            newHand(teamAWon?0:2);
+            dealer=(dealer+1)%4;
+            newHand((dealer+1)%4);
         }
 
         boolean aiAcceptTruco(){
             int top=0,strong=0,man=0;
-            for(Card c:players[2].hand){
-                top=Math.max(top,strength(c));
-                if(strength(c)>=8) strong++;
-                if(manilha(c)) man++;
+            for(Player pl:players){
+                if(pl.teamA) continue;
+                for(Card c:pl.hand){
+                    top=Math.max(top,strength(c));
+                    if(strength(c)>=8) strong++;
+                    if(manilha(c)) man++;
+                }
             }
             int chance=difficulty==1?20:difficulty==2?32:48;
             if(man>0||strong>=2||top>=9) return true;
@@ -256,13 +285,21 @@ public class MainActivity extends Activity {
             if(finished||waiting||elevenDecision||current!=0) return;
             int next=stake==1?3:stake==3?6:stake==6?9:12;
             if(stake>=12){status="Já vale 12!";invalidate();return;}
+
+            // No Paulista, o aumento é 3, 6, 9 e 12.
+            // Se os rivais não aceitam, a dupla que pediu ganha o valor anterior.
             if(aiAcceptTruco()){
                 stake=next;
-                status="🔥 RIVAIS ACEITARAM! Vale "+stake+".";
+                status="🔥 RIVAIS ACEITARAM! Agora vale "+stake+".";
             }else{
                 teamAPoints+=stake;
-                status="🏃 RIVAIS CORRERAM! Sua dupla +"+stake+".";
+                status="🏃 RIVAIS CORRERAM! Sua dupla ganha "+stake+" ponto(s).";
                 if(teamAPoints>=12) finished=true;
+                else {
+                    round++;
+                    dealer=(dealer+1)%4;
+                    postDelayed(()->newHand((dealer+1)%4),650);
+                }
             }
             invalidate();
         }
@@ -275,10 +312,13 @@ public class MainActivity extends Activity {
         }
 
         void run11(){
-            elevenDecision=false; teamBPoints++;
-            status="🏃 CORRE! Rivais +1.";
+            elevenDecision=false;
+            teamBPoints++;
+            status="🏃 CORRE! Rivais ganham 1 ponto.";
             if(teamBPoints>=12){finished=true;invalidate();return;}
-            round++;newHand(2);
+            round++;
+            dealer=(dealer+1)%4;
+            postDelayed(()->newHand((dealer+1)%4),650);
         }
 
         @Override protected void onDraw(Canvas c){
@@ -453,7 +493,7 @@ public class MainActivity extends Activity {
             p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(22);
             c.drawText("MÃO DE 11",w/2,h/2-57,p);
             p.setTextSize(13);p.setColor(Color.LTGRAY);
-            c.drawText("Você pode decidir jogar valendo 3",w/2,h/2-30,p);
+            c.drawText("Sua dupla pode jogar valendo 3",w/2,h/2-30,p);
             c.drawText("ou correr e entregar 1 ponto.",w/2,h/2-9,p);
             play11Rect.set(w/2-145,h/2+20,w/2-10,h/2+68);
             run11Rect.set(w/2+10,h/2+20,w/2+145,h/2+68);

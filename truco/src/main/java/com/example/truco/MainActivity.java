@@ -512,10 +512,10 @@ public class MainActivity extends Activity {
             drawHand(c,w/2,h-170);
 
             // Botão TRUCO fica no lado direito, separado das cartas da mão.
-            trucoRect.set(w-105,h-112,w-15,h-58);
+            trucoRect.set(w-105,h-145,w-15,h-91);
             button(c,trucoRect,"TRUCO!",Color.rgb(190,45,45),15);
             if(trickNo>1 && current==0 && !pendingRaise){
-                coverRect.set(w/2-82,h-158,w/2+82,h-110);
+                coverRect.set(w/2-82,h-205,w/2+82,h-157);
                 button(c,coverRect,"COBERTA",Color.rgb(70,80,90),13);
             }
 
@@ -626,12 +626,13 @@ public class MainActivity extends Activity {
         }
 
         void drawHand(Canvas c,float x,float y){
-            float gap=78;
-            float start=x-(players[0].hand.size()-1)*gap/2f-34;
+            float gap=86;
+            float cardW=80, cardH=110;
+            float start=x-(players[0].hand.size()-1)*gap/2f-cardW/2f;
             for(int i=0;i<players[0].hand.size();i++){
                 float left=start+i*gap;
-                cardRects[i]=new RectF(left,y,left+68,y+94);
-                drawCard(c,players[0].hand.get(i),left,y,68,94,false);
+                cardRects[i]=new RectF(left,y,left+cardW,y+cardH);
+                drawCard(c,players[0].hand.get(i),left,y,cardW,cardH,false);
             }
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(11);
             c.drawText("SUAS CARTAS — toque para jogar",x,y+112,p);

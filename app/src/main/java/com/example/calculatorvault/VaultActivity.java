@@ -125,29 +125,50 @@ public class VaultActivity extends AppCompatActivity {
     }
 
     private void changeCurrentPin() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+
         EditText pin = new EditText(this);
         pin.setHint("Novo PIN (mínimo 4 números)");
         pin.setInputType(2);
+        box.addView(pin);
+
+        EditText confirm = new EditText(this);
+        confirm.setHint("Confirme o novo PIN");
+        confirm.setInputType(2);
+        box.addView(confirm);
 
         new AlertDialog.Builder(this)
-                .setTitle("Alterar PIN")
-                .setView(pin)
+                .setTitle("Alterar PIN do " + (type == VaultType.REAL ? "Cofre 1" : "Cofre 2"))
+                .setMessage("O novo PIN substituirá o PIN atual deste cofre.")
+                .setView(box)
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Salvar", (dialog, which) -> {
                     String value = pin.getText().toString();
+                    String check = confirm.getText().toString();
 
                     if (value.length() < 4) {
                         Toast.makeText(this, "O PIN precisa ter pelo menos 4 números.", Toast.LENGTH_LONG).show();
                         return;
                     }
+                    if (!value.matches("\\d+")) {
+                        Toast.makeText(this, "Use somente números.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (!value.equals(check)) {
+                        Toast.makeText(this, "Os PINs não conferem.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
 
                     try {
+                        PinManager pm = storagePinManager();
                         if (type == VaultType.REAL) {
-                            storagePinManager().setRealPin(value);
+                            pm.setRealPin(value);
                         } else {
-                            storagePinManager().setFakePin(value);
+                            pm.setFakePin(value);
                         }
-                        Toast.makeText(this, "PIN alterado.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "PIN alterado com sucesso.", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
                         Toast.makeText(this, "Não foi possível alterar o PIN.", Toast.LENGTH_LONG).show();
                     }

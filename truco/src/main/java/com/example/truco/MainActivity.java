@@ -541,7 +541,7 @@ public class MainActivity extends Activity {
 
             // Todas as cartas jogadas ficam juntas no centro da mesa.
             // Tamanho maior para facilitar a leitura no celular.
-            final float cw=96, ch=112;
+            final float cw=96, ch=126;
             final float centerX=w/2f;
             final float gap=8;
             final float leftX=centerX-cw-gap/2f;
@@ -631,7 +631,7 @@ public class MainActivity extends Activity {
 
         void drawHand(Canvas c,float x,float y){
             float gap=86;
-            float cardW=80, cardH=110;
+            float cardW=96, cardH=126;
             float start=x-(players[0].hand.size()-1)*gap/2f-cardW/2f;
             for(int i=0;i<players[0].hand.size();i++){
                 float left=start+i*gap;

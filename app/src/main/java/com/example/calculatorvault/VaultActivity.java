@@ -172,8 +172,8 @@ public class VaultActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Remover arquivo?")
                 .setMessage(
-                        "Deseja realmente apagar "" + item.getName()
-                                + ""? Esta ação não pode ser desfeita."
+                        "Deseja realmente apagar \"" + item.getName()
+                                + "\"? Esta ação não pode ser desfeita."
                 )
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Remover", (dialog, which) -> deleteItemAsync(item))

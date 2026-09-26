@@ -146,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (key.equals("ENTRAR")) {
-            if (!pendingOperator && input.matches("\\d{4,12}")) {
+            if (pendingOperator.isEmpty() && input.matches("\\d{4,12}")) {
                 unlockFromCalculator();
             } else {
                 calculateResult();
@@ -244,17 +244,9 @@ public class MainActivity extends AppCompatActivity {
         box.addView(pin1);
         box.addView(pin2);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Configurar seus dois cofres")
-                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em ENTRAR para abrir o cofre correspondente.")
-                .setView(box)
-                .setCancelable(false)
-                .setPositiveButton("Salvar", null)
-                .create();
-
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Configurar seus dois cofres")
-                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em = para abrir o cofre correspondente.")
+                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em ENTRAR para abrir o cofre correspondente.")
                 .setView(box)
                 .setCancelable(false)
                 .setPositiveButton("Salvar", null)

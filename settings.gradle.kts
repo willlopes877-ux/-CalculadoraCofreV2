@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CalculadoraCofreV2"
 include(":app")
+include(":game")

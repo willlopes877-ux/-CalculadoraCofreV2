@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
         Player[] players=new Player[4];
         Card vira;
 
-        int teamAPoints=0, teamBPoints=0, stake=1, current=0, round=1, tricksA=0, tricksB=0, dealer=3;
+        int teamAPoints=0, teamBPoints=0, stake=1, current=0, round=1, tricksA=0, tricksB=0, dealer=3, trickNo=1;
         boolean finished=false, waiting=false, elevenDecision=false;
         int screen=0; // 0 menu, 1 match, 2 how-to, 3 settings
         String status="Sua vez — escolha uma carta";
@@ -72,17 +72,21 @@ public class MainActivity extends Activity {
 
         void newHand(int first){
             deck.clear(); trick.clear(); trickWinners.clear();
-            stake=1; tricksA=tricksB=0; waiting=false; elevenDecision=false;
+            stake=1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false;
             for(Player pl:players) pl.hand.clear();
             buildDeck(); Collections.shuffle(deck,rnd);
             for(int i=0;i<3;i++) for(Player pl:players) pl.hand.add(deck.remove(0));
             vira=deck.remove(0); current=first;
-            if(teamAPoints==11){
+            if(teamAPoints==11 && teamBPoints==11){
+                stake=1;
+                status="⚔️ MÃO DE FERRO — valendo 1!";
+                invalidate();
+            } else if(teamAPoints==11){
                 elevenDecision=true;
-                status="MÃO DE 11 — sua dupla está em 11. Decida!";
+                status="MÃO DE 11 — sua dupla pode ver as cartas e decidir."; 
                 invalidate(); return;
             }
-            if(teamBPoints==11){
+            if(teamBPoints==11 && teamAPoints<11){
                 // Os rivais decidem automaticamente com base nas cartas.
                 if(aiAcceptTruco()){
                     stake=3;
@@ -243,6 +247,7 @@ public class MainActivity extends Activity {
             invalidate();
 
             trick.clear();
+            trickNo++;
             if(tricksA>=2||tricksB>=2){
                 postDelayed(()->endHand(players[winner].teamA),650);
                 return;
@@ -282,7 +287,7 @@ public class MainActivity extends Activity {
         }
 
         void askTruco(){
-            if(finished||waiting||elevenDecision||current!=0) return;
+            if(finished||waiting||elevenDecision||current!=0||teamAPoints==11||teamBPoints==11) return;
             int next=stake==1?3:stake==3?6:stake==6?9:12;
             if(stake>=12){status="Já vale 12!";invalidate();return;}
 
@@ -345,7 +350,7 @@ public class MainActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);p.setTextSize(38);c.drawText("TRUCO",w/2,145,p);
             p.setColor(Color.rgb(45,185,105));p.setTextSize(22);c.drawText("ARENA IA",w/2,178,p);
-            p.setColor(Color.LTGRAY);p.setTextSize(14);c.drawText("Cartas • estratégia • blefe",w/2,205,p);
+            p.setColor(Color.LTGRAY);p.setTextSize(14);c.drawText("TRUCO PAULISTA • estratégia • blefe",w/2,205,p);
 
             playRect.set(w/2-145,270,w/2+145,332);
             howRect.set(w/2-145,350,w/2+145,405);
@@ -355,7 +360,7 @@ public class MainActivity extends Activity {
             button(c,settingsRect,"CONFIGURAÇÕES",Color.rgb(42,50,58),17);
 
             p.setColor(Color.rgb(130,140,145));p.setTextSize(12);
-            c.drawText("V2 • mesa mobile • IA estratégica",w/2,h-35,p);
+            c.drawText("V2 • TRUCO PAULISTA • 2x2",w/2,h-35,p);
         }
 
         void drawHowTo(Canvas c){
@@ -363,13 +368,15 @@ public class MainActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(28);c.drawText("COMO JOGAR",w/2,65,p);
             p.setTextAlign(Paint.Align.LEFT);p.setTextSize(15);p.setColor(Color.LTGRAY);
             String[] lines={
-                "• Toque em uma carta para jogar.",
-                "• A carta jogada aparece no centro da mesa.",
-                "• Você joga com uma parceira IA contra 2 rivais.",
-                "• O botão TRUCO aumenta o valor da mão.",
-                "• As IAs analisam cartas, mesa e pontuação.",
-                "• Elas podem blefar e passar sinais falsos.",
-                "• A partida termina quando uma dupla chega a 12."
+                "• Truco Paulista: 40 cartas, sem 8, 9 e 10.",
+                "• 3 cartas por jogador; a VIRA define a manilha.",
+                "• Força: manilhas > 3 > 2 > A > K > J > Q > 7 > 6 > 5 > 4.",
+                "• Manilhas: ♣ Zap > ♥ > ♠ > ♦.",
+                "• Melhor de 3 vazas; empate segue a regra da vaza anterior.",
+                "• Valor: 1 → 3 → 6 → 9 → 12. Pode aceitar, correr ou aumentar.",
+                "• Mão de 11 vale 3 se jogar e não permite Truco.",
+                "• 11×11 é Mão de Ferro: vale 1 e decide a partida.",
+                "• A carta coberta não pode ser usada na primeira vaza."
             };
             float y=125;
             for(String s:lines){c.drawText(s,28,y,p);y+=43;}
@@ -400,6 +407,8 @@ public class MainActivity extends Activity {
             p.setTextSize(15);c.drawText("VOCÊ + IA  "+teamAPoints+"  ×  "+teamBPoints+"  RIVAIS",w/2,52,p);
             p.setTextSize(12);p.setColor(Color.rgb(215,230,220));
             c.drawText("Mão "+round+" • Vale "+stake+" • "+tricksA+"×"+tricksB,w/2,75,p);\n\n            // VIRA: carta virada do baralho, sempre visível na mesa.\n            p.setColor(Color.WHITE); p.setTextSize(11);\n            c.drawText("VIRA",w/2,112,p);\n            if(vira!=null) drawCard(c,vira,w/2-32,120,64,88,true);
+            p.setColor(Color.rgb(230,240,232)); p.setTextSize(9);
+            c.drawText("MANILHA: próxima carta • ♣ > ♥ > ♠ > ♦",w/2,214,p);
 
             drawOpponent(c,players[2],w/2,132);
             drawTeammate(c,players[1],70,200);

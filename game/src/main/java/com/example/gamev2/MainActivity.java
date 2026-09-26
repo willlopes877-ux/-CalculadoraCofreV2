@@ -19,7 +19,7 @@ public class MainActivity extends Activity {
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         final Random rnd = new Random();
         final ArrayList<Particle> particles = new ArrayList<>();
-        float d,w,h,playerX,enemyX,playerHp=100,enemyHp=100,xp,shake,skillCharge;
+        float d,w,h,playerX,enemyX,playerHp=100,enemyHp=100,xp,shake,skillCharge;\n        int aiMood=0, aiAggression=1;\n        long aiThinkAt, aiDodgeUntil;\n        String aiLine="IA: analisando você...";
         int level=1,enemyLevel=1,damage=20,defense=3,kills,combo;
         long lastAttack,dodgeUntil,enemyAttackAt,enemyTelegraphUntil,attackUntil,skillFlashUntil,lastFrame;
         boolean dodging,enemyWarning,attacking,paused,gameOver,playerHit;
@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
             if(Math.abs(dist)>dp(135))enemyX+=Math.signum(dist)*dp(42)*dt;
             if(Math.abs(dist)<dp(175)&&now>enemyAttackAt){
                 enemyAttackAt=now+1250-Math.min(300,enemyLevel*25);
-                enemyTelegraphUntil=now+500;
+                enemyTelegraphUntil=now+500;\n                aiThink(now);
             }
             if(enemyTelegraphUntil>0&&enemyTelegraphUntil<=now){
                 enemyTelegraphUntil=0;
@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
             if(playerHit&&rnd.nextInt(5)==0)playerHit=false;
         }
 
-        void defeatEnemy(long now){
+        void aiThink(long now){\n            if(now<aiThinkAt)return;\n            aiThinkAt=now+650-Math.min(220,enemyLevel*18);\n            float hpRatio=playerHp/100f;\n            float enemyRatio=enemyHp/(100f+enemyLevel*20f);\n            if(combo>=3){ aiMood=2; aiAggression=3; aiLine="IA: quebrando seu combo!"; }\n            else if(hpRatio<.35f){ aiMood=1; aiAggression=2; aiLine="IA: vou finalizar!"; }\n            else if(enemyRatio<.35f){ aiMood=3; aiAggression=1; aiLine="IA: recuando..."; }\n            else { aiMood=0; aiAggression=1+rnd.nextInt(2); aiLine=rnd.nextBoolean()?"IA: analisando...":"IA: minha vez!"; }\n            if(aiMood==3 && rnd.nextFloat()<.45f) enemyX=Math.max(w*.60f,enemyX-dp(35));\n            if(aiMood==2 && rnd.nextFloat()<.35f) enemyX=Math.min(w*.82f,enemyX+dp(25));\n        }\n\n        void defeatEnemy(long now){
             kills++; xp+=45+enemyLevel*12; burst(enemyX,h*.48f,48);
             enemyLevel++; enemyHp=100+enemyLevel*20; enemyX=w*.72f; combo=0;
             enemyAttackAt=now+850;
@@ -113,13 +113,13 @@ public class MainActivity extends Activity {
         void drawEnemy(Canvas c){
             float y=h*.48f,x=enemyX;
             p.setColor(Color.argb(85,0,0,0));c.drawOval(x-dp(46),y+dp(47),x+dp(46),y+dp(64),p);
-            p.setColor(Color.rgb(190,55,70));c.drawRoundRect(x-dp(29),y-dp(6),x+dp(29),y+dp(49),dp(15),dp(15),p);
+            p.setColor(aiMood==2?Color.rgb(235,45,55):aiMood==3?Color.rgb(145,55,180):Color.rgb(190,55,70));c.drawRoundRect(x-dp(29),y-dp(6),x+dp(29),y+dp(49),dp(15),dp(15),p);
             p.setColor(Color.rgb(91,34,48));c.drawCircle(x,y-dp(31),dp(26),p);
             p.setColor(Color.rgb(255,215,70));c.drawCircle(x-dp(9),y-dp(33),dp(4),p);c.drawCircle(x+dp(9),y-dp(33),dp(4),p);
             p.setColor(Color.rgb(55,15,25));c.drawRect(x-dp(19),y-dp(54),x+dp(19),y-dp(36),p);
             if(enemyWarning){p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(5));p.setColor(Color.rgb(255,75,70));c.drawCircle(x,y,dp(65),p);p.setStyle(Paint.Style.FILL);text(c,"!",x,y-dp(73),dp(26),Color.rgb(255,90,80),true,Paint.Align.CENTER);}
             bar(c,x-dp(52),y-dp(82),x+dp(52),y-dp(70),enemyHp,100+enemyLevel*20,Color.rgb(245,70,90));
-            text(c,"INIMIGO  LV "+enemyLevel,x,y-dp(93),dp(10),Color.WHITE,true,Paint.Align.CENTER);
+            text(c,"VILÃO IA  LV "+enemyLevel,x,y-dp(93),dp(10),Color.WHITE,true,Paint.Align.CENTER);\n            if(System.currentTimeMillis()<aiThinkAt+900) text(c,aiLine,x,y-dp(110),dp(9),Color.rgb(255,220,130),true,Paint.Align.CENTER);
         }
 
         void drawParticles(Canvas c){for(Particle q:particles){int a=(int)Math.max(0,Math.min(255,q.life/.9f*255));p.setColor(Color.argb(a,q.kind==1?255:90,q.kind==1?175:220,q.kind==1?45:255));c.drawCircle(q.x,q.y,q.r,p);}}
@@ -187,8 +187,8 @@ public class MainActivity extends Activity {
         }
         void dodge(){long now=System.currentTimeMillis();if(now<dodgeUntil)return;dodging=true;dodgeUntil=now+520;playerX=Math.min(w*.56f,playerX+dp(60));burst(playerX,h*.48f,20);}
         void move(float dir){if(gameOver||dodging)return;playerX=Math.max(dp(65),Math.min(w*.56f,playerX+dir*dp(55)));}
-        void useSkill(){if(skillCharge<100)return;skillCharge=0;skillFlashUntil=System.currentTimeMillis()+350;enemyHp-=damage*4.5f;burst(enemyX,h*.48f,90);shake=1.2f;if(enemyHp<=0)defeatEnemy(System.currentTimeMillis());}
-        void reset(){playerHp=100;xp=0;skillCharge=0;level=1;enemyLevel=1;damage=20;defense=3;kills=0;combo=0;lastAttack=0;dodgeUntil=0;enemyAttackAt=System.currentTimeMillis()+900;enemyTelegraphUntil=0;enemyHp=100;playerX=w*.28f;enemyX=w*.72f;gameOver=false;paused=false;particles.clear();}
+        void useSkill(){if(skillCharge<100)return;skillCharge=0; aiLine="IA: especial detectado!";skillFlashUntil=System.currentTimeMillis()+350;enemyHp-=damage*4.5f;burst(enemyX,h*.48f,90);shake=1.2f;if(enemyHp<=0)defeatEnemy(System.currentTimeMillis());}
+        void reset(){playerHp=100;xp=0;skillCharge=0;level=1;enemyLevel=1;damage=20;defense=3;kills=0;combo=0;lastAttack=0;dodgeUntil=0;enemyAttackAt=System.currentTimeMillis()+900;enemyTelegraphUntil=0;enemyHp=100;aiMood=0;aiAggression=1;aiLine="IA: analisando você...";aiThinkAt=System.currentTimeMillis()+700;aiDodgeUntil=0;playerX=w*.28f;enemyX=w*.72f;gameOver=false;paused=false;particles.clear();}
 
         static class Particle{float x,y,vx,vy,life,r;int kind;}
     }

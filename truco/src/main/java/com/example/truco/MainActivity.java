@@ -539,23 +539,35 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            // Todas as cartas jogadas ficam juntas no centro da mesa.
-            // Tamanho maior para facilitar a leitura no celular.
+            // Cada carta aparece diretamente na frente do jogador que a jogou.
+            // Mantemos o mesmo tamanho da VIRA: 96 x 126.
             final float cw=96, ch=126;
-            final float centerX=w/2f;
-            final float gap=8;
-            final float leftX=centerX-cw-gap/2f;
-            final float rightX=centerX+gap/2f;
-            final float topY=390;
-            final float bottomY=500;
-
             for(int i=0;i<n;i++){
                 Played x=trick.get(i);
                 float left, top;
-                if(i==0){ left=leftX; top=topY; }
-                else if(i==1){ left=rightX; top=topY; }
-                else if(i==2){ left=leftX; top=bottomY; }
-                else { left=rightX; top=bottomY; }
+
+                switch(x.player){
+                    case 0: // Você — carta acima da sua mão
+                        left=w/2f-cw/2f;
+                        top=h-315;
+                        break;
+                    case 1: // Parceira IA — carta na frente do avatar esquerdo
+                        left=62-cw/2f;
+                        top=392;
+                        break;
+                    case 2: // Rival IA de cima — carta na frente do avatar central
+                        left=w/2f-cw/2f;
+                        top=392;
+                        break;
+                    default: // Rival IA da direita — carta na frente do avatar direito
+                        left=w-62-cw/2f;
+                        top=392;
+                        break;
+                }
+
+                // Sombra para destacar a carta sobre a mesa.
+                p.setColor(Color.argb(150,0,0,0));
+                c.drawRoundRect(left-4,top+5,left+cw+4,top+ch+7,14,14,p);
                 drawCard(c,x.card,left,top,cw,ch,true);
             }
         }

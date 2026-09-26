@@ -22,6 +22,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class VaultActivity extends AppCompatActivity {
 
@@ -31,6 +33,7 @@ public class VaultActivity extends AppCompatActivity {
     private TextView storageInfo;
     private final List<VaultItem> items = new ArrayList<>();
     private ActivityResultLauncher<String[]> filePicker;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +45,7 @@ public class VaultActivity extends AppCompatActivity {
 
         createFilePicker();
         showVault();
-        loadFiles();
+        loadFilesAsync();
     }
 
     private void createFilePicker() {
@@ -51,26 +54,44 @@ public class VaultActivity extends AppCompatActivity {
                 uris -> {
                     if (uris == null || uris.isEmpty()) return;
 
-                    int imported = 0;
-                    String lastError = null;
+                    Toast.makeText(this, "Importando arquivo(s)...", Toast.LENGTH_SHORT).show();
 
-                    for (Uri uri : uris) {
-                        try {
-                            storage.importFile(uri, vaultType);
-                            imported++;
-                        } catch (Exception e) {
-                            lastError = e.getMessage();
+                    executor.execute(() -> {
+                        int imported = 0;
+                        String lastError = null;
+
+                        for (Uri uri : uris) {
+                            try {
+                                storage.importFile(uri, vaultType);
+                                imported++;
+                            } catch (Exception e) {
+                                lastError = e.getMessage();
+                            }
                         }
-                    }
 
-                    loadFiles();
+                        final int totalImported = imported;
+                        final String error = lastError;
 
-                    if (imported > 0) {
-                        Toast.makeText(this, imported + " arquivo(s) guardado(s) no cofre.", Toast.LENGTH_SHORT).show();
-                    }
-                    if (lastError != null) {
-                        Toast.makeText(this, "Não foi possível importar: " + lastError, Toast.LENGTH_LONG).show();
-                    }
+                        runOnUiThread(() -> {
+                            loadFilesAsync();
+
+                            if (totalImported > 0) {
+                                Toast.makeText(
+                                        this,
+                                        totalImported + " arquivo(s) guardado(s) no cofre.",
+                                        Toast.LENGTH_SHORT
+                                ).show();
+                            }
+
+                            if (error != null) {
+                                Toast.makeText(
+                                        this,
+                                        "Não foi possível importar: " + error,
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            }
+                        });
+                    });
                 }
         );
     }
@@ -103,7 +124,11 @@ public class VaultActivity extends AppCompatActivity {
 
         recyclerView = new RecyclerView(this);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(new VaultAdapter(items, this::openItem));
+        recyclerView.setAdapter(new VaultAdapter(
+                items,
+                this::openItem,
+                this::confirmDeleteItem
+        ));
         root.addView(recyclerView, new LinearLayout.LayoutParams(-1, 0, 1));
 
         Button lock = new Button(this);
@@ -114,37 +139,103 @@ public class VaultActivity extends AppCompatActivity {
         setContentView(root);
     }
 
-    private void loadFiles() {
-        items.clear();
-        items.addAll(storage.getItems(vaultType));
+    private void loadFilesAsync() {
+        executor.execute(() -> {
+            List<VaultItem> loaded = storage.getItems(vaultType);
+            long used = storage.getStorageUsed(vaultType);
 
-        if (recyclerView != null && recyclerView.getAdapter() != null) {
-            recyclerView.getAdapter().notifyDataSetChanged();
-        }
-        updateStorageInfo();
+            runOnUiThread(() -> {
+                items.clear();
+                items.addAll(loaded);
+
+                if (recyclerView != null && recyclerView.getAdapter() != null) {
+                    recyclerView.getAdapter().notifyDataSetChanged();
+                }
+
+                if (storageInfo != null) {
+                    storageInfo.setText(
+                            "Arquivos: " + items.size()
+                                    + "\nEspaço usado: " + formatSize(used)
+                    );
+                }
+            });
+        });
     }
 
-    private void updateStorageInfo() {
-        long used = storage.getStorageUsed(vaultType);
-        storageInfo.setText("Arquivos: " + items.size() + "\nEspaço usado: " + formatSize(used));
+    private void confirmDeleteItem(VaultItem item) {
+        new AlertDialog.Builder(this)
+                .setTitle("Remover arquivo?")
+                .setMessage("Deseja realmente apagar "" + item.getName() + ""? Esta ação não pode ser desfeita.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Remover", (dialog, which) -> deleteItemAsync(item))
+                .show();
+    }
+
+    private void deleteItemAsync(VaultItem item) {
+        Toast.makeText(this, "Removendo arquivo...", Toast.LENGTH_SHORT).show();
+
+        executor.execute(() -> {
+            try {
+                storage.deleteItem(item);
+
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Arquivo removido.", Toast.LENGTH_SHORT).show();
+                    loadFilesAsync();
+                });
+            } catch (Exception e) {
+                final String error = e.getMessage();
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                this,
+                                "Erro ao remover: " + error,
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+            }
+        });
     }
 
     private void openItem(VaultItem item) {
-        try {
-            File temp = storage.createTemporaryDecryptedFile(item.getFile(), item.getMimeType());
-            Uri uri = FileProvider.getUriForFile(
-                    this,
-                    getPackageName() + ".fileprovider",
-                    temp
-            );
+        Toast.makeText(this, "Abrindo arquivo...", Toast.LENGTH_SHORT).show();
 
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, item.getMimeType());
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Erro ao abrir: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+        executor.execute(() -> {
+            try {
+                File temp = storage.createTemporaryDecryptedFile(
+                        item.getFile(),
+                        item.getMimeType()
+                );
+
+                runOnUiThread(() -> {
+                    try {
+                        Uri uri = FileProvider.getUriForFile(
+                                this,
+                                getPackageName() + ".fileprovider",
+                                temp
+                        );
+
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setDataAndType(uri, item.getMimeType());
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Toast.makeText(
+                                this,
+                                "Erro ao abrir: " + e.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show();
+                    }
+                });
+            } catch (Exception e) {
+                final String error = e.getMessage();
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                this,
+                                "Erro ao abrir: " + error,
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+            }
+        });
     }
 
     private void showChangePin() {
@@ -230,6 +321,7 @@ public class VaultActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        executor.shutdownNow();
         if (storage != null) storage.clearTemporaryFiles();
         super.onDestroy();
     }

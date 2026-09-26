@@ -16,7 +16,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -99,7 +99,7 @@ public class VaultActivity extends AppCompatActivity {
     private void showVault() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(24), dp(16), dp(16));
+        root.setPadding(dp(12), dp(18), dp(12), dp(12));
 
         TextView title = new TextView(this);
         title.setText(vaultType == VaultType.REAL ? "🔒 Cofre 1" : "🔐 Cofre 2");
@@ -108,13 +108,16 @@ public class VaultActivity extends AppCompatActivity {
         root.addView(title);
 
         storageInfo = new TextView(this);
-        storageInfo.setTextSize(16);
-        storageInfo.setPadding(0, dp(12), 0, dp(12));
+        storageInfo.setTextSize(15);
+        storageInfo.setGravity(Gravity.CENTER);
+        storageInfo.setPadding(0, dp(8), 0, dp(8));
         root.addView(storageInfo);
 
         Button add = new Button(this);
-        add.setText("Adicionar fotos/vídeos");
-        add.setOnClickListener(v -> filePicker.launch(new String[]{"image/*", "video/*"}));
+        add.setText("ADICIONAR FOTOS/VÍDEOS");
+        add.setOnClickListener(v ->
+                filePicker.launch(new String[]{"image/*", "video/*"})
+        );
         root.addView(add);
 
         Button changePin = new Button(this);
@@ -123,13 +126,17 @@ public class VaultActivity extends AppCompatActivity {
         root.addView(changePin);
 
         recyclerView = new RecyclerView(this);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
         recyclerView.setAdapter(new VaultAdapter(
                 items,
+                storage,
                 this::openItem,
                 this::confirmDeleteItem
         ));
-        root.addView(recyclerView, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(
+                recyclerView,
+                new LinearLayout.LayoutParams(-1, 0, 1)
+        );
 
         Button lock = new Button(this);
         lock.setText("🔒 Bloquear cofre");
@@ -154,8 +161,7 @@ public class VaultActivity extends AppCompatActivity {
 
                 if (storageInfo != null) {
                     storageInfo.setText(
-                            "Arquivos: " + items.size()
-                                    + "\nEspaço usado: " + formatSize(used)
+                            "📷 " + items.size() + " arquivo(s) • " + formatSize(used)
                     );
                 }
             });
@@ -165,7 +171,10 @@ public class VaultActivity extends AppCompatActivity {
     private void confirmDeleteItem(VaultItem item) {
         new AlertDialog.Builder(this)
                 .setTitle("Remover arquivo?")
-                .setMessage("Deseja realmente apagar "" + item.getName() + ""? Esta ação não pode ser desfeita.")
+                .setMessage(
+                        "Deseja realmente apagar "" + item.getName()
+                                + ""? Esta ação não pode ser desfeita."
+                )
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Remover", (dialog, which) -> deleteItemAsync(item))
                 .show();

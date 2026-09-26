@@ -53,3 +53,5 @@ jobs:
           gh release create "$TAG" Ascension-Lord-of-Shadows-V1.apk \
             --title "Ascension: Lord of Shadows — V1 — $TAG" \
             --generate-notes
+
+# Build trigger refreshed for Ascension V1

@@ -467,47 +467,47 @@ public class MainActivity extends Activity {
             p.setTextSize(11);
             c.drawText("MÃO "+round+"   •   VALE "+stake+"   •   VAZAS "+tricksA+" × "+tricksB,w/2,151,p);
 
-            // VIRA EM CARTA GRANDE E COM TEXTO EXPLÍCITO.
-            float vx=w/2-42, vy=180, vw=84, vh=112;
+            // VIRA: área fixa e bem destacada, separada da mesa.
+            float vx=w/2-48, vy=188, vw=96, vh=126;
             p.setColor(Color.rgb(5,25,16));
-            c.drawRoundRect(vx-8,vy-8,vx+vw+8,vy+vh+8,16,16,p);
+            c.drawRoundRect(vx-9,vy-9,vx+vw+9,vy+vh+9,18,18,p);
             p.setColor(Color.rgb(255,220,70));
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(3);
-            c.drawRoundRect(vx-5,vy-5,vx+vw+5,vy+vh+5,14,14,p);
+            c.drawRoundRect(vx-6,vy-6,vx+vw+6,vy+vh+6,15,15,p);
             p.setStyle(Paint.Style.FILL);
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);
             p.setTextSize(15);
-            c.drawText("VIRA",w/2,174,p);
+            c.drawText("VIRA",w/2,180,p);
             if(vira!=null){
-                p.setTextSize(32);
+                p.setTextSize(36);
                 int vc=(vira.suit.equals("♥")||vira.suit.equals("♦"))?Color.rgb(255,90,100):Color.WHITE;
                 p.setColor(vc);
-                c.drawText(vira.rank,w/2,226,p);
-                p.setTextSize(42);
-                c.drawText(vira.suit,w/2,270,p);
-                p.setTextSize(11);
+                c.drawText(vira.rank,w/2,238,p);
+                p.setTextSize(46);
+                c.drawText(vira.suit,w/2,286,p);
+                p.setTextSize(12);
                 p.setColor(Color.rgb(255,235,150));
-                c.drawText("MANILHA = "+nextRank(vira.rank),w/2,285,p);
+                c.drawText("MANILHA = "+nextRank(vira.rank),w/2,306,p);
             }
 
-            // Jogadores ficam abaixo da VIRA.
-            drawOpponent(c,players[2],w/2,320);
-            drawTeammate(c,players[1],62,325);
-            drawOpponent(c,players[3],w-62,325);
+            // Jogadores ficam abaixo da VIRA, sem cobrir a carta virada.
+            drawOpponent(c,players[2],w/2,342);
+            drawTeammate(c,players[1],62,347);
+            drawOpponent(c,players[3],w-62,347);
 
             // Mesa.
             p.setColor(Color.argb(90,0,0,0));
-            c.drawRoundRect(15,385,w-15,535,20,20,p);
+            c.drawRoundRect(15,375,w-15,615,20,20,p);
             p.setColor(Color.WHITE);
             p.setTextSize(11);
-            c.drawText("MESA / VAZA "+trickNo,w/2,378,p);
+            c.drawText("MESA / VAZA "+trickNo,w/2,368,p);
             drawPlayedCards(c,w,h);
 
             p.setTextSize(12);
             p.setColor(Color.WHITE);
-            c.drawText(status,w/2,548,p);
+            c.drawText(status,w/2,628,p);
 
             drawHand(c,w/2,h-170);
 
@@ -534,29 +534,27 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            // Cada carta fica na frente do avatar de quem a jogou.
-            // Sem nomes: a própria posição identifica o jogador.
-            final float cw=78, ch=108;
+            // Cartas maiores e separadas no centro da mesa.
+            // A posição identifica o jogador, sem nomes sobre a mesa.
+            final float cw=72, ch=100;
             final float centerX=w/2f;
-            final float sideLeft=Math.max(78,cw/2f+12);
-            final float sideRight=Math.min(w-78,w-cw/2f-12);
 
             for(int i=0;i<n;i++){
                 Played x=trick.get(i);
-                float cx, cy;
+                float left, top;
 
                 switch(x.player){
-                    case 0: // Você: carta acima da sua mão.
-                        cx=centerX; cy=430; break;
-                    case 1: // Parceira: na frente do avatar esquerdo.
-                        cx=sideLeft; cy=405; break;
-                    case 2: // Rival de cima: abaixo do avatar superior.
-                        cx=centerX; cy=395; break;
-                    default: // Rival da direita: na frente do avatar direito.
-                        cx=sideRight; cy=405; break;
+                    case 2: // rival de cima
+                        left=centerX-cw/2f; top=382; break;
+                    case 1: // parceira à esquerda
+                        left=centerX-cw-48; top=447; break;
+                    case 3: // rival à direita
+                        left=centerX+48; top=447; break;
+                    default: // você embaixo
+                        left=centerX-cw/2f; top=512; break;
                 }
 
-                drawCard(c,x.card,cx-cw/2f,cy,cw,ch,true);
+                drawCard(c,x.card,left,top,cw,ch,true);
             }
         }
 

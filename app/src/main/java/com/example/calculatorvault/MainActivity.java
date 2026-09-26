@@ -3,9 +3,11 @@ package com.example.calculatorvault;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -19,411 +21,234 @@ public class MainActivity extends AppCompatActivity {
 
     private String input = "";
     private TextView display;
-
     private PinManager pinManager;
+
+    private final int BG = Color.rgb(0, 0, 0);
+    private final int DARK = Color.rgb(51, 51, 51);
+    private final int LIGHT = Color.rgb(165, 165, 165);
+    private final int ORANGE = Color.rgb(255, 149, 0);
+    private final int WHITE = Color.WHITE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         pinManager = new PinManager(this);
-
         showCalculator();
 
-        if (!pinManager.isRealPinConfigured()
-                || !pinManager.isFakePinConfigured()) {
-
+        if (!pinManager.isRealPinConfigured() || !pinManager.isFakePinConfigured()) {
             showFirstSetup();
         }
     }
 
     private int dp(int value) {
-        return (int) (
-                value *
-                getResources()
-                        .getDisplayMetrics()
-                        .density
-                        + 0.5f
-        );
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    private TextView createText(
-            String text,
-            float size
-    ) {
-
+    private TextView createDisplay() {
         TextView t = new TextView(this);
-
-        t.setText(text);
-        t.setTextColor(Color.WHITE);
-        t.setTextSize(size);
-
+        t.setText("0");
+        t.setTextColor(WHITE);
+        t.setTextSize(46);
+        t.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(8), 0, dp(8), 0);
         return t;
     }
 
+    private GradientDrawable circleBackground(int color) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(color);
+        bg.setShape(GradientDrawable.OVAL);
+        return bg;
+    }
+
+    private Button createKey(String key) {
+        Button b = new Button(this);
+        b.setText(key);
+        b.setTextSize(key.equals("0") ? 22 : 20);
+        b.setTextColor(key.equals("AC") || key.equals("⌫") || key.equals("%")
+                ? Color.BLACK : WHITE);
+        b.setAllCaps(false);
+        b.setPadding(0, 0, 0, 0);
+        b.setMinHeight(0);
+        b.setMinWidth(0);
+        b.setGravity(Gravity.CENTER);
+
+        int bgColor;
+        if (key.equals("=") || key.equals("÷") || key.equals("×")
+                || key.equals("−") || key.equals("+")) {
+            bgColor = ORANGE;
+        } else if (key.equals("AC") || key.equals("⌫") || key.equals("%")) {
+            bgColor = LIGHT;
+        } else {
+            bgColor = DARK;
+        }
+        b.setBackground(circleBackground(bgColor));
+        b.setOnClickListener(v -> press(key));
+        return b;
+    }
+
     private void showCalculator() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(8), dp(24), dp(8), dp(8));
+        root.setBackgroundColor(BG);
 
-        LinearLayout root =
-                new LinearLayout(this);
+        display = createDisplay();
+        root.addView(display, new LinearLayout.LayoutParams(-1, 0, 1.35f));
 
-        root.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        root.setPadding(
-                dp(16),
-                dp(28),
-                dp(16),
-                dp(16)
-        );
-
-        root.setBackgroundColor(
-                Color.rgb(16, 16, 20)
-        );
-
-        display =
-                createText(
-                        "0",
-                        42
-                );
-
-        display.setGravity(
-                Gravity.RIGHT |
-                Gravity.CENTER_VERTICAL
-        );
-
-        root.addView(
-                display,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        1
-                )
-        );
-
-        GridLayout grid =
-                new GridLayout(this);
-
+        GridLayout grid = new GridLayout(this);
         grid.setColumnCount(4);
+        grid.setRowCount(5);
 
         String[] keys = {
-                "AC", "%", "÷", "⌫",
+                "AC", "⌫", "%", "÷",
                 "7", "8", "9", "×",
                 "4", "5", "6", "−",
                 "1", "2", "3", "+",
-                "0", ".", "=", "🔒"
+                "0", ".", "=", ""
         };
 
         for (String key : keys) {
-
-            Button button =
-                    new Button(this);
-
-            button.setText(key);
-            button.setTextSize(18);
-
-            button.setOnClickListener(
-                    v -> press(key)
-            );
-
-            GridLayout.LayoutParams params =
-                    new GridLayout.LayoutParams();
-
-            params.width = 0;
-            params.height = dp(64);
-
-            params.columnSpec =
-                    GridLayout.spec(
-                            GridLayout.UNDEFINED,
-                            1f
-                    );
-
-            params.setMargins(
-                    dp(3),
-                    dp(3),
-                    dp(3),
-                    dp(3)
-            );
-
-            grid.addView(
-                    button,
-                    params
-            );
+            if (key.isEmpty()) continue;
+            Button b = createKey(key);
+            GridLayout.LayoutParams p = new GridLayout.LayoutParams();
+            if (key.equals("0")) {
+                p.columnSpec = GridLayout.spec(0, 2, 1f);
+            } else {
+                p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f);
+            }
+            p.rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f);
+            p.width = 0;
+            p.height = 0;
+            p.setMargins(dp(4), dp(4), dp(4), dp(4));
+            grid.addView(b, p);
         }
 
-        root.addView(
-                grid,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        0,
-                        3
-                )
-        );
-
+        root.addView(grid, new LinearLayout.LayoutParams(-1, 0, 3.8f));
         setContentView(root);
     }
 
     private void press(String key) {
-
-        if (key.equals("🔒")) {
-
-            showPin();
-
+        if (key.equals("AC")) {
+            input = "";
+            display.setText("0");
             return;
         }
 
-        if (key.equals("AC")) {
-
-            input = "";
-            display.setText("0");
-
-        } else if (key.equals("⌫")) {
-
+        if (key.equals("⌫")) {
             if (!input.isEmpty()) {
-
-                input =
-                        input.substring(
-                                0,
-                                input.length() - 1
-                        );
+                input = input.substring(0, input.length() - 1);
             }
-
-            display.setText(
-                    input.isEmpty()
-                            ? "0"
-                            : input
-            );
-
-        } else if (key.equals("=")) {
-
-            display.setText(
-                    input.isEmpty()
-                            ? "0"
-                            : input
-            );
-
-        } else {
-
-            input += key;
-
-            display.setText(input);
+            display.setText(input.isEmpty() ? "0" : input);
+            return;
         }
+
+        if (key.equals("=")) {
+            unlockFromCalculator();
+            return;
+        }
+
+        // The calculator is intentionally also the PIN entry surface.
+        // Numeric keys build the secret code; visual operator keys are ignored
+        // so the hidden vault can only be opened with a numeric PIN.
+        if (key.matches("\\d")) {
+            if (input.length() < 12) {
+                input += key;
+                display.setText(input);
+            }
+        }
+    }
+
+    private void unlockFromCalculator() {
+        if (input.length() < 4) {
+            Toast.makeText(this, "Digite o PIN e toque em =", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (pinManager.verifyRealPin(input)) {
+            openVault(VaultType.REAL);
+            clearInput();
+        } else if (pinManager.verifyFakePin(input)) {
+            openVault(VaultType.FAKE);
+            clearInput();
+        } else {
+            Toast.makeText(this, "Resultado inválido", Toast.LENGTH_SHORT).show();
+            clearInput();
+        }
+    }
+
+    private void clearInput() {
+        input = "";
+        if (display != null) display.setText("0");
     }
 
     private void showFirstSetup() {
+        final EditText pin1 = createPinInput("PIN do Cofre 1");
+        final EditText pin2 = createPinInput("PIN do Cofre 2");
 
-        final EditText realPin =
-                createPinInput(
-                        "Crie o PIN principal"
-                );
-
-        final EditText fakePin =
-                createPinInput(
-                        "Crie o PIN falso"
-                );
-
-        LinearLayout box =
-                new LinearLayout(this);
-
-        box.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        box.setPadding(
-                dp(20),
-                dp(10),
-                dp(20),
-                0
-        );
-
-        box.addView(realPin);
-
-        box.addView(fakePin);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        box.addView(pin1);
+        box.addView(pin2);
 
         new AlertDialog.Builder(this)
-                .setTitle(
-                        "Configurar cofre"
-                )
-                .setMessage(
-                        "O PIN principal abre o cofre real.\n\n"
-                        + "O PIN falso abre o cofre separado."
-                )
+                .setTitle("Configurar seus dois cofres")
+                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em = para abrir o cofre correspondente.")
                 .setView(box)
                 .setCancelable(false)
-                .setPositiveButton(
-                        "Salvar",
-                        (dialog, which) -> {
+                .setPositiveButton("Salvar", null)
+                .create();
 
-                            String real =
-                                    realPin
-                                            .getText()
-                                            .toString();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Configurar seus dois cofres")
+                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em = para abrir o cofre correspondente.")
+                .setView(box)
+                .setCancelable(false)
+                .setPositiveButton("Salvar", null)
+                .create();
 
-                            String fake =
-                                    fakePin
-                                            .getText()
-                                            .toString();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String real = pin1.getText().toString();
+            String fake = pin2.getText().toString();
 
-                            if (real.length() < 4
-                                    || fake.length() < 4) {
+            if (real.length() < 4 || fake.length() < 4) {
+                Toast.makeText(this, "Os dois PINs precisam ter pelo menos 4 números.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            if (real.equals(fake)) {
+                Toast.makeText(this, "Os dois PINs precisam ser diferentes.", Toast.LENGTH_LONG).show();
+                return;
+            }
 
-                                Toast.makeText(
-                                        this,
-                                        "Os PINs precisam ter pelo menos 4 números.",
-                                        Toast.LENGTH_LONG
-                                ).show();
-
-                                showFirstSetup();
-
-                                return;
-                            }
-
-                            if (real.equals(fake)) {
-
-                                Toast.makeText(
-                                        this,
-                                        "O PIN real e o PIN falso precisam ser diferentes.",
-                                        Toast.LENGTH_LONG
-                                ).show();
-
-                                showFirstSetup();
-
-                                return;
-                            }
-
-                            try {
-
-                                pinManager.setRealPin(
-                                        real
-                                );
-
-                                pinManager.setFakePin(
-                                        fake
-                                );
-
-                                Toast.makeText(
-                                        this,
-                                        "Cofres configurados.",
-                                        Toast.LENGTH_SHORT
-                                ).show();
-
-                            } catch (Exception e) {
-
-                                Toast.makeText(
-                                        this,
-                                        "Erro ao configurar os PINs.",
-                                        Toast.LENGTH_LONG
-                                ).show();
-                            }
-                        }
-                )
-                .show();
+            try {
+                pinManager.setRealPin(real);
+                pinManager.setFakePin(fake);
+                dialog.dismiss();
+                Toast.makeText(this, "Cofres configurados.", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Erro ao configurar os PINs.", Toast.LENGTH_LONG).show();
+            }
+        }));
+        dialog.show();
     }
 
-    private EditText createPinInput(
-            String hint
-    ) {
-
-        EditText input =
-                new EditText(this);
-
+    private EditText createPinInput(String hint) {
+        EditText input = new EditText(this);
         input.setHint(hint);
-
-        input.setInputType(
-                InputType.TYPE_CLASS_NUMBER
-                        | InputType
-                        .TYPE_NUMBER_VARIATION_PASSWORD
-        );
-
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
         return input;
     }
 
-    private void showPin() {
-
-        EditText pin =
-                createPinInput("PIN");
-
-        new AlertDialog.Builder(this)
-                .setTitle(
-                        "Digite o resultado"
-                )
-                .setView(pin)
-                .setPositiveButton(
-                        "OK",
-                        (dialog, which) -> {
-
-                            String value =
-                                    pin.getText()
-                                            .toString();
-
-                            if (pinManager
-                                    .verifyRealPin(value)) {
-
-                                openVault(
-                                        VaultType.REAL
-                                );
-
-                            } else if (
-                                    pinManager
-                                            .verifyFakePin(
-                                                    value
-                                            )) {
-
-                                openVault(
-                                        VaultType.FAKE
-                                );
-
-                            } else {
-
-                                Toast.makeText(
-                                        this,
-                                        "Resultado inválido",
-                                        Toast.LENGTH_SHORT
-                                ).show();
-
-                                showDecoy();
-                            }
-                        }
-                )
-                .setNegativeButton(
-                        "Cancelar",
-                        null
-                )
-                .show();
-    }
-
-    private void openVault(
-            VaultType type
-    ) {
-
-        Intent intent =
-                new Intent(
-                        this,
-                        VaultActivity.class
-                );
-
-        intent.putExtra(
-                "VAULT_TYPE",
-                type == VaultType.REAL
-                        ? "REAL"
-                        : "FAKE"
-        );
-
+    private void openVault(VaultType type) {
+        Intent intent = new Intent(this, VaultActivity.class);
+        intent.putExtra("VAULT_TYPE", type == VaultType.REAL ? "REAL" : "FAKE");
         startActivity(intent);
     }
 
-    private void showDecoy() {
-
-        input = "";
-
-        if (display != null) {
-            display.setText("0");
-        }
-
-        Toast.makeText(
-                this,
-                "Calculadora pronta",
-                Toast.LENGTH_SHORT
-        ).show();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        clearInput();
     }
 }

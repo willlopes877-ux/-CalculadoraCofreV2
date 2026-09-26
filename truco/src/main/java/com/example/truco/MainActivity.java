@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
         RectF[] cardRects=new RectF[3];
         RectF trucoRect=new RectF(), restartRect=new RectF();
         RectF play11Rect=new RectF(), run11Rect=new RectF(); RectF acceptRect=new RectF(), foldRect=new RectF(), raiseRect=new RectF(), coverRect=new RectF();
-        RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF();
+        RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF(), menuGameRect=new RectF();
         RectF easyRect=new RectF(), normalRect=new RectF(), hardRect=new RectF();
         int difficulty=2;
 
@@ -438,32 +438,36 @@ public class MainActivity extends Activity {
             float w=getWidth(),h=getHeight();
             c.drawColor(Color.rgb(20,105,65));
 
+            // Botão de menu sempre acessível durante a partida.
+            menuGameRect.set(10,10,92,48);
+            button(c,menuGameRect,"☰ MENU",Color.rgb(35,45,40),12);
+
             // Painel superior
             p.setColor(Color.argb(190,0,0,0));c.drawRect(0,0,w,94,p);
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(22);
             c.drawText("TRUCO ARENA",w/2,28,p);
-            p.setTextSize(15);c.drawText("VOCÊ + IA  "+teamAPoints+"  ×  "+teamBPoints+"  RIVAIS",w/2,52,p);
+            p.setTextSize(16);p.setColor(Color.WHITE);c.drawText("VOCÊ + IA   "+teamAPoints+"  ×  "+teamBPoints+"   RIVAIS",w/2,55,p);
             p.setTextSize(12);p.setColor(Color.rgb(215,230,220));
-            c.drawText("Mão "+round+" • Vale "+stake+" • "+tricksA+"×"+tricksB,w/2,75,p);
+            c.drawText("MÃO "+round+"   •   VALE "+stake+"   •   VAZAS "+tricksA+"×"+tricksB,w/2,76,p);
 
-            // VIRA: carta virada do baralho, sempre visível na mesa.
-            p.setColor(Color.WHITE); p.setTextSize(11);
-            c.drawText("VIRA",w/2,112,p);
-            if(vira!=null) drawCard(c,vira,w/2-32,120,64,88,true);
+            // VIRA fica em uma área própria, sem ficar escondida pelos avatares.
+            p.setColor(Color.WHITE); p.setTextSize(12);
+            c.drawText("VIRA",w/2,104,p);
+            if(vira!=null) drawCard(c,vira,w/2-27,110,54,72,true);
             p.setColor(Color.rgb(230,240,232)); p.setTextSize(9);
-            c.drawText("MANILHA: próxima carta • ♣ > ♥ > ♠ > ♦",w/2,214,p);
+            c.drawText("MANILHA: "+(vira==null?"—":nextRank(vira.rank))+"   ♣ > ♥ > ♠ > ♦",w/2,190,p);
 
-            drawOpponent(c,players[2],w/2,132);
-            drawTeammate(c,players[1],70,200);
-            drawOpponent(c,players[3],w-70,200);
+            drawOpponent(c,players[2],w/2,200);
+            drawTeammate(c,players[1],58,205);
+            drawOpponent(c,players[3],w-58,205);
 
-            // Área central: cartas jogadas ficam visíveis até resolver a vaza.
-            p.setColor(Color.argb(80,0,0,0));c.drawRoundRect(35,225,w-35,445,24,24,p);
-            p.setColor(Color.WHITE);p.setTextSize(12);c.drawText("MESA",w/2,220,p);
+            // Área central compacta para caber melhor em telas menores.
+            p.setColor(Color.argb(80,0,0,0));c.drawRoundRect(20,270,w-20,425,20,20,p);
+            p.setColor(Color.WHITE);p.setTextSize(12);c.drawText("MESA",w/2,264,p);
             drawPlayedCards(c,w,h);
 
             p.setTextSize(13);p.setColor(Color.WHITE);
-            c.drawText(status,w/2,450,p);
+            c.drawText(status,w/2,438,p);
 
             drawHand(c,w/2,h-172);
 
@@ -620,6 +624,7 @@ public class MainActivity extends Activity {
             }
 
             if(finished&&restartRect.contains(x,y)){startMatch();return true;}
+            if(menuGameRect.contains(x,y)){screen=0;waiting=false;pendingRaise=false;elevenDecision=false;invalidate();return true;}
             if(elevenDecision){
                 if(play11Rect.contains(x,y))play11();
                 else if(run11Rect.contains(x,y))run11();

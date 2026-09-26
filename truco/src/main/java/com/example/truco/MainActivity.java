@@ -41,12 +41,12 @@ public class MainActivity extends Activity {
         Card vira;
 
         int teamAPoints=0, teamBPoints=0, stake=1, current=0, round=1, tricksA=0, tricksB=0, dealer=3, trickNo=1;
-        boolean finished=false, waiting=false, elevenDecision=false;
+        boolean finished=false, waiting=false, elevenDecision=false, pendingRaise=false; boolean raiseByTeamA=false; int proposedStake=0;
         int screen=0; // 0 menu, 1 match, 2 how-to, 3 settings
         String status="Sua vez — escolha uma carta";
         RectF[] cardRects=new RectF[3];
         RectF trucoRect=new RectF(), restartRect=new RectF();
-        RectF play11Rect=new RectF(), run11Rect=new RectF();
+        RectF play11Rect=new RectF(), run11Rect=new RectF(); RectF acceptRect=new RectF(), foldRect=new RectF(), raiseRect=new RectF(), coverRect=new RectF();
         RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF();
         RectF easyRect=new RectF(), normalRect=new RectF(), hardRect=new RectF();
         int difficulty=2;
@@ -72,7 +72,7 @@ public class MainActivity extends Activity {
 
         void newHand(int first){
             deck.clear(); trick.clear(); trickWinners.clear();
-            stake=1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false;
+            stake=1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; pendingRaise=false; proposedStake=0;
             for(Player pl:players) pl.hand.clear();
             buildDeck(); Collections.shuffle(deck,rnd);
             for(int i=0;i<3;i++) for(Player pl:players) pl.hand.add(deck.remove(0));
@@ -164,7 +164,7 @@ public class MainActivity extends Activity {
         }
 
         void playHuman(int idx){
-            if(finished||waiting||elevenDecision||current!=0||idx<0||idx>=players[0].hand.size()) return;
+            if(finished||waiting||elevenDecision||pendingRaise||current!=0||idx<0||idx>=players[0].hand.size()) return;
             Card c=players[0].hand.remove(idx);
             trick.add(new Played(0,c));
             status="Você jogou "+c.label()+" — carta na mesa!";
@@ -182,8 +182,9 @@ public class MainActivity extends Activity {
         }
 
         void runAITurn(){
-            if(finished||waiting||elevenDecision) return;
+            if(finished||waiting||elevenDecision||pendingRaise) return;
             Player pl=players[current];
+            if(trick.size()==0 && !pl.human){ aiCallRaiseIfStrong(); if(pendingRaise) return; }
             if(pl.human){invalidate();return;}
             waiting=true;
             invalidate();
@@ -287,26 +288,63 @@ public class MainActivity extends Activity {
         }
 
         void askTruco(){
-            if(finished||waiting||elevenDecision||current!=0||teamAPoints==11||teamBPoints==11) return;
+            if(finished||waiting||elevenDecision||pendingRaise||current!=0||teamAPoints==11||teamBPoints==11) return;
             int next=stake==1?3:stake==3?6:stake==6?9:12;
             if(stake>=12){status="Já vale 12!";invalidate();return;}
+            pendingRaise=true; raiseByTeamA=true; proposedStake=next;
+            status="🔥 VOCÊ PEDIU "+(next==3?"TRUCO":next==6?"SEIS":next==9?"NOVE":"DOZE")+"!";
+            invalidate(); postDelayed(()->aiRespondToRaise(),650);
+        }
 
-            // No Paulista, o aumento é 3, 6, 9 e 12.
-            // Se os rivais não aceitam, a dupla que pediu ganha o valor anterior.
+        void aiRespondToRaise(){
+            if(!pendingRaise) return;
             if(aiAcceptTruco()){
-                stake=next;
-                status="🔥 RIVAIS ACEITARAM! Agora vale "+stake+".";
-            }else{
-                teamAPoints+=stake;
+                stake=proposedStake; pendingRaise=false; proposedStake=0;
+                status="🤖 RIVAIS ACEITARAM! Agora vale "+stake+"."; invalidate();
+            } else {
+                pendingRaise=false; proposedStake=0; teamAPoints+=stake;
                 status="🏃 RIVAIS CORRERAM! Sua dupla ganha "+stake+" ponto(s).";
-                if(teamAPoints>=12) finished=true;
-                else {
-                    round++;
-                    dealer=(dealer+1)%4;
-                    postDelayed(()->newHand((dealer+1)%4),650);
-                }
+                if(teamAPoints>=12){finished=true;invalidate();return;}
+                round++; dealer=(dealer+1)%4; postDelayed(()->newHand((dealer+1)%4),650);
             }
-            invalidate();
+        }
+
+        void aiCallRaiseIfStrong(){
+            if(finished||waiting||elevenDecision||pendingRaise||teamAPoints==11||teamBPoints==11||trick.size()>0) return;
+            Player pl=players[current]; if(pl.human) return;
+            int best=0,man=0; for(Card c:pl.hand){best=Math.max(best,strength(c));if(manilha(c))man++;}
+            int chance=difficulty==1?6:difficulty==2?14:22;
+            if((man>0||best>=9)&&rnd.nextInt(100)<chance&&stake<12){
+                int next=stake==1?3:stake==3?6:stake==6?9:12;
+                pendingRaise=true; raiseByTeamA=false; proposedStake=next;
+                status=pl.name+" pediu "+(next==3?"TRUCO":next==6?"SEIS":next==9?"NOVE":"DOZE")+"!";
+                invalidate();
+            }
+        }
+
+        void respondToAIRaise(boolean accept, boolean raise){
+            if(!pendingRaise||raiseByTeamA)return;
+            if(!accept&&!raise){
+                pendingRaise=false; proposedStake=0; teamBPoints+=stake;
+                status="🏃 VOCÊ CORREU! Rivais ganham "+stake+" ponto(s).";
+                if(teamBPoints>=12){finished=true;invalidate();return;}
+                round++;dealer=(dealer+1)%4;postDelayed(()->newHand((dealer+1)%4),650);return;
+            }
+            if(raise){
+                if(proposedStake>=12){respondToAIRaise(true,false);return;}
+                stake=proposedStake; proposedStake=proposedStake==3?6:proposedStake==6?9:12;
+                raiseByTeamA=true; status="🔥 VOCÊ AUMENTOU PARA "+proposedStake+"!";
+                invalidate(); postDelayed(()->aiRespondToRaise(),650); return;
+            }
+            stake=proposedStake; pendingRaise=false; proposedStake=0;
+            status="Você aceitou. A mão vale "+stake+"."; invalidate(); postDelayed(()->runAITurn(),250);
+        }
+
+        void coverCard(){
+            if(finished||waiting||elevenDecision||pendingRaise||current!=0||trickNo==1||players[0].hand.isEmpty())return;
+            Card c=players[0].hand.remove(0); trick.add(new Played(0,c));
+            status="Você jogou uma carta COBERTA. Ela não pode ganhar a vaza."; invalidate();
+            postDelayed(this::advanceTurn,220);
         }
 
         void play11(){
@@ -426,7 +464,9 @@ public class MainActivity extends Activity {
 
             trucoRect.set(w/2-82,h-105,w/2+82,h-55);
             button(c,trucoRect,"TRUCO!",Color.rgb(185,45,45),17);
+            if(trickNo>1 && current==0 && !pendingRaise){ coverRect.set(w/2-82,h-160,w/2+82,h-112); button(c,coverRect,"COBERTA",Color.rgb(70,80,90),13); }
 
+            if(pendingRaise && !raiseByTeamA) drawRaiseDialog(c,w,h);
             if(elevenDecision) draw11(c,w,h);
             if(finished){
                 restartRect.set(w/2-110,h-48,w/2+110,h-12);
@@ -495,6 +535,16 @@ public class MainActivity extends Activity {
                 p.setColor(Color.rgb(150,65,65));c.drawOval(cx-7,cy+10,cx+7,cy+15,p);
             }
             p.setStyle(Paint.Style.FILL);
+        }
+
+        void drawRaiseDialog(Canvas c,float w,float h){
+            p.setColor(Color.argb(248,7,13,10)); c.drawRoundRect(15,h/2-95,w-15,h/2+105,22,22,p);
+            p.setColor(Color.WHITE); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(21);
+            c.drawText("🔥 "+(proposedStake==3?"TRUCO":proposedStake==6?"SEIS":proposedStake==9?"NOVE":"DOZE")+"!",w/2,h/2-55,p);
+            p.setTextSize(13); p.setColor(Color.LTGRAY); c.drawText("Rivais propõem "+proposedStake+" pontos.",w/2,h/2-30,p);
+            acceptRect.set(28,h/2,w/2-12,h/2+50); foldRect.set(w/2+12,h/2,w-28,h/2+50);
+            button(c,acceptRect,"ACEITAR",Color.rgb(35,135,75),14); button(c,foldRect,"CORRER",Color.rgb(150,45,45),14);
+            if(proposedStake<12){raiseRect.set(28,h/2+62,w-28,h/2+110);button(c,raiseRect,"AUMENTAR",Color.rgb(185,110,35),14);}
         }
 
         void draw11(Canvas c,float w,float h){
@@ -570,7 +620,14 @@ public class MainActivity extends Activity {
                 else if(run11Rect.contains(x,y))run11();
                 return true;
             }
+            if(pendingRaise && !raiseByTeamA){
+                if(acceptRect.contains(x,y)) respondToAIRaise(true,false);
+                else if(foldRect.contains(x,y)) respondToAIRaise(false,false);
+                else if(raiseRect.contains(x,y)) respondToAIRaise(true,true);
+                return true;
+            }
             if(trucoRect.contains(x,y)){askTruco();return true;}
+            if(coverRect.contains(x,y)){coverCard();return true;}
             if(current==0&&!waiting){
                 for(int i=0;i<players[0].hand.size();i++){
                     if(cardRects[i]!=null&&cardRects[i].contains(x,y)){playHuman(i);return true;}

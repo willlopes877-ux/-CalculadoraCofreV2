@@ -403,16 +403,49 @@ public class MainActivity extends Activity {
         }
 
         void drawOpponent(Canvas c,Player pl,float x,float y){
-            p.setColor(Color.argb(120,0,0,0));c.drawOval(x-52,y-25,x+52,y+42,p);
-            p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(12);
-            c.drawText("🤖 "+pl.name,x,y+2,p);
-            p.setTextSize(11);p.setColor(Color.rgb(220,235,225));c.drawText(pl.hand.size()+" cartas",x,y+20,p);
+            drawAvatar(c,x,y,pl==players[2]?2:3,44);
+            p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(11);
+            c.drawText(pl.name,x,y+58,p);
+            p.setColor(Color.rgb(220,235,225));p.setTextSize(10);
+            c.drawText(pl.hand.size()+" cartas",x,y+74,p);
         }
 
         void drawTeammate(Canvas c,Player pl,float x,float y){
-            p.setColor(Color.argb(120,0,0,0));c.drawRoundRect(x-62,y-25,x+62,y+35,12,12,p);
+            drawAvatar(c,x,y,1,42);
             p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(11);
-            c.drawText("🤖 PARCEIRA",x,y-5,p);c.drawText("🂠 "+pl.hand.size()+" cartas",x,y+14,p);
+            c.drawText("PARCEIRA IA",x,y+56,p);
+            p.setColor(Color.rgb(220,235,225));p.setTextSize(10);
+            c.drawText(pl.hand.size()+" cartas",x,y+71,p);
+        }
+
+        // Avatares desenhados no próprio jogo: não dependem de imagens externas.
+        void drawAvatar(Canvas c,float cx,float cy,int type,float r){
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(210,0,0,0));c.drawCircle(cx,cy,r+5,p);
+            int bg=type==1?Color.rgb(185,95,150):type==2?Color.rgb(65,120,190):type==3?Color.rgb(210,135,55):Color.rgb(75,165,105);
+            p.setColor(bg);c.drawCircle(cx,cy,r,p);
+
+            // pescoço
+            p.setColor(Color.rgb(205,155,115));c.drawRoundRect(cx-9,cy+18,cx+9,cy+34,5,5,p);
+            // roupa
+            p.setColor(type==1?Color.rgb(55,65,115):type==2?Color.rgb(45,55,65):type==3?Color.rgb(115,55,45):Color.rgb(45,95,75));
+            c.drawRoundRect(cx-25,cy+27,cx+25,cy+r+7,16,16,p);
+            // rosto
+            p.setColor(Color.rgb(222,170,125));c.drawCircle(cx,cy+2,r*0.58f,p);
+            // cabelo
+            p.setColor(type==1?Color.rgb(70,40,25):type==2?Color.rgb(45,30,20):type==3?Color.rgb(80,50,30):Color.rgb(30,25,20));
+            if(type==1) c.drawArc(cx-r*0.58f,cy-r*0.48f,cx+r*0.58f,cy+20,180,180,true,p);
+            else c.drawCircle(cx,cy-10,r*0.57f,p);
+            // olhos
+            p.setColor(Color.WHITE);c.drawCircle(cx-9,cy+2,4,p);c.drawCircle(cx+9,cy+2,4,p);
+            p.setColor(Color.rgb(35,25,20));c.drawCircle(cx-9,cy+2,2,p);c.drawCircle(cx+9,cy+2,2,p);
+            // boca / barba / detalhe
+            if(type==2||type==3){
+                p.setColor(Color.rgb(75,45,30));c.drawRoundRect(cx-10,cy+10,cx+10,cy+17,5,5,p);
+            } else {
+                p.setColor(Color.rgb(150,65,65));c.drawOval(cx-7,cy+10,cx+7,cy+15,p);
+            }
+            p.setStyle(Paint.Style.FILL);
         }
 
         void draw11(Canvas c,float w,float h){

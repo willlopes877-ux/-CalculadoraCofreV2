@@ -386,7 +386,7 @@ public class MainActivity extends Activity {
             bg(c);
             float w=getWidth(),h=getHeight();
             p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(Color.WHITE);p.setTextSize(38);c.drawText("TRUCO",w/2,145,p);
+            p.setColor(Color.WHITE);p.setTextSize(44);c.drawText("TRUCO",w/2,145,p);
             p.setColor(Color.rgb(45,185,105));p.setTextSize(22);c.drawText("ARENA IA",w/2,178,p);
             p.setColor(Color.LTGRAY);p.setTextSize(14);c.drawText("TRUCO PAULISTA • estratégia • blefe",w/2,205,p);
 
@@ -451,11 +451,11 @@ public class MainActivity extends Activity {
 
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);
-            p.setTextSize(20);
-            c.drawText("TRUCO PAULISTA",w/2,30,p);
+            p.setTextSize(23);
+            c.drawText("TRUCO PAULISTA",w/2,32,p);
 
             // Placar grande.
-            p.setTextSize(25);
+            p.setTextSize(28);
             p.setColor(Color.rgb(255,235,150));
             c.drawText("VOCÊ + PARCEIRA",w/4,75,p);
             p.setColor(Color.WHITE);
@@ -464,11 +464,11 @@ public class MainActivity extends Activity {
             p.setColor(Color.WHITE);
             c.drawText(String.valueOf(teamAPoints),w/4,118,p);
             c.drawText(String.valueOf(teamBPoints),w*3/4,118,p);
-            p.setTextSize(24);
+            p.setTextSize(28);
             p.setColor(Color.rgb(220,225,220));
             c.drawText("×",w/2,116,p);
 
-            p.setTextSize(11);
+            p.setTextSize(13);
             c.drawText("MÃO "+round+"   •   VALE "+stake+"   •   VAZAS "+tricksA+" × "+tricksB,w/2,151,p);
 
             // VIRA: área fixa e bem destacada, separada da mesa.
@@ -482,16 +482,16 @@ public class MainActivity extends Activity {
             p.setStyle(Paint.Style.FILL);
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);
-            p.setTextSize(15);
+            p.setTextSize(18);
             c.drawText("VIRA",w/2,180,p);
             if(vira!=null){
-                p.setTextSize(36);
+                p.setTextSize(42);
                 int vc=(vira.suit.equals("♥")||vira.suit.equals("♦"))?Color.rgb(255,90,100):Color.WHITE;
                 p.setColor(vc);
                 c.drawText(vira.rank,w/2,238,p);
-                p.setTextSize(46);
+                p.setTextSize(52);
                 c.drawText(vira.suit,w/2,286,p);
-                p.setTextSize(12);
+                p.setTextSize(14);
                 p.setColor(Color.rgb(255,235,150));
                 c.drawText("MANILHA = "+nextRank(vira.rank),w/2,306,p);
             }
@@ -505,11 +505,11 @@ public class MainActivity extends Activity {
             p.setColor(Color.argb(90,0,0,0));
             c.drawRoundRect(15,375,w-15,615,20,20,p);
             p.setColor(Color.WHITE);
-            p.setTextSize(11);
+            p.setTextSize(14);
             c.drawText("MESA / VAZA "+trickNo,w/2,368,p);
             drawPlayedCards(c,w,h);
 
-            p.setTextSize(12);
+            p.setTextSize(14);
             p.setColor(Color.WHITE);
             c.drawText(status,w/2,628,p);
 
@@ -638,7 +638,7 @@ public class MainActivity extends Activity {
                 cardRects[i]=new RectF(left,y,left+cardW,y+cardH);
                 drawCard(c,players[0].hand.get(i),left,y,cardW,cardH,false);
             }
-            p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(11);
+            p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(14);
             c.drawText("SUAS CARTAS — toque para jogar",x,y+112,p);
         }
 

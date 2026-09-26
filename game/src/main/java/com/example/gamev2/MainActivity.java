@@ -39,7 +39,10 @@ public class MainActivity extends Activity {
         boolean listening=false, aiBusy=false;
         String voiceStatus="MIC: toque para falar";
         String playerSpeech="", aiVoiceReply="";
-        float d,w,h,playerX,enemyX,playerHp=100,enemyHp=100,xp,shake,skillCharge;\n        int aiMood=0, aiAggression=1;\n        long aiThinkAt, aiDodgeUntil;\n        String aiLine="IA: analisando você...";
+        float d,w,h,playerX,enemyX,playerHp=100,enemyHp=100,xp,shake,skillCharge;
+        int aiMood=0, aiAggression=1;
+        long aiThinkAt, aiDodgeUntil;
+        String aiLine="IA: analisando você...";
         int level=1,enemyLevel=1,damage=20,defense=3,kills,combo;
         long lastAttack,dodgeUntil,enemyAttackAt,enemyTelegraphUntil,attackUntil,skillFlashUntil,lastFrame;
         boolean dodging,enemyWarning,attacking,paused,gameOver,playerHit;
@@ -89,7 +92,8 @@ public class MainActivity extends Activity {
             if(Math.abs(dist)>dp(135))enemyX+=Math.signum(dist)*dp(42)*dt;
             if(Math.abs(dist)<dp(175)&&now>enemyAttackAt){
                 enemyAttackAt=now+1250-Math.min(300,enemyLevel*25);
-                enemyTelegraphUntil=now+500;\n                aiThink(now);
+                enemyTelegraphUntil=now+500;
+                aiThink(now);
             }
             if(enemyTelegraphUntil>0&&enemyTelegraphUntil<=now){
                 enemyTelegraphUntil=0;
@@ -100,7 +104,20 @@ public class MainActivity extends Activity {
             if(playerHit&&rnd.nextInt(5)==0)playerHit=false;
         }
 
-        void aiThink(long now){\n            if(now<aiThinkAt)return;\n            aiThinkAt=now+650-Math.min(220,enemyLevel*18);\n            float hpRatio=playerHp/100f;\n            float enemyRatio=enemyHp/(100f+enemyLevel*20f);\n            if(combo>=3){ aiMood=2; aiAggression=3; aiLine="IA: quebrando seu combo!"; }\n            else if(hpRatio<.35f){ aiMood=1; aiAggression=2; aiLine="IA: vou finalizar!"; }\n            else if(enemyRatio<.35f){ aiMood=3; aiAggression=1; aiLine="IA: recuando..."; }\n            else { aiMood=0; aiAggression=1+rnd.nextInt(2); aiLine=rnd.nextBoolean()?"IA: analisando...":"IA: minha vez!"; }\n            if(aiMood==3 && rnd.nextFloat()<.45f) enemyX=Math.max(w*.60f,enemyX-dp(35));\n            if(aiMood==2 && rnd.nextFloat()<.35f) enemyX=Math.min(w*.82f,enemyX+dp(25));\n        }\n\n        void defeatEnemy(long now){
+        void aiThink(long now){
+            if(now<aiThinkAt)return;
+            aiThinkAt=now+650-Math.min(220,enemyLevel*18);
+            float hpRatio=playerHp/100f;
+            float enemyRatio=enemyHp/(100f+enemyLevel*20f);
+            if(combo>=3){ aiMood=2; aiAggression=3; aiLine="IA: quebrando seu combo!"; }
+            else if(hpRatio<.35f){ aiMood=1; aiAggression=2; aiLine="IA: vou finalizar!"; }
+            else if(enemyRatio<.35f){ aiMood=3; aiAggression=1; aiLine="IA: recuando..."; }
+            else { aiMood=0; aiAggression=1+rnd.nextInt(2); aiLine=rnd.nextBoolean()?"IA: analisando...":"IA: minha vez!"; }
+            if(aiMood==3 && rnd.nextFloat()<.45f) enemyX=Math.max(w*.60f,enemyX-dp(35));
+            if(aiMood==2 && rnd.nextFloat()<.35f) enemyX=Math.min(w*.82f,enemyX+dp(25));
+        }
+
+        void defeatEnemy(long now){
             kills++; xp+=45+enemyLevel*12; burst(enemyX,h*.48f,48);
             enemyLevel++; enemyHp=100+enemyLevel*20; enemyX=w*.72f; combo=0;
             enemyAttackAt=now+850;
@@ -159,7 +176,8 @@ public class MainActivity extends Activity {
             p.setColor(Color.rgb(55,15,25));c.drawRect(x-dp(19),y-dp(54),x+dp(19),y-dp(36),p);
             if(enemyWarning){p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(5));p.setColor(Color.rgb(255,75,70));c.drawCircle(x,y,dp(65),p);p.setStyle(Paint.Style.FILL);text(c,"!",x,y-dp(73),dp(26),Color.rgb(255,90,80),true,Paint.Align.CENTER);}
             bar(c,x-dp(52),y-dp(82),x+dp(52),y-dp(70),enemyHp,100+enemyLevel*20,Color.rgb(245,70,90));
-            text(c,"VILÃO IA  LV "+enemyLevel,x,y-dp(93),dp(10),Color.WHITE,true,Paint.Align.CENTER);\n            if(System.currentTimeMillis()<aiThinkAt+900) text(c,aiLine,x,y-dp(110),dp(9),Color.rgb(255,220,130),true,Paint.Align.CENTER);
+            text(c,"VILÃO IA  LV "+enemyLevel,x,y-dp(93),dp(10),Color.WHITE,true,Paint.Align.CENTER);
+            if(System.currentTimeMillis()<aiThinkAt+900) text(c,aiLine,x,y-dp(110),dp(9),Color.rgb(255,220,130),true,Paint.Align.CENTER);
         }
 
         void drawParticles(Canvas c){for(Particle q:particles){int a=(int)Math.max(0,Math.min(255,q.life/.9f*255));p.setColor(Color.argb(a,q.kind==1?255:90,q.kind==1?175:220,q.kind==1?45:255));c.drawCircle(q.x,q.y,q.r,p);}}

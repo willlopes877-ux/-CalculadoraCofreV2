@@ -32,7 +32,7 @@ public class MainActivity extends Activity {
         int teamAPoints=0,teamBPoints=0,stake=1,current=0,round=1,tricksA=0,tricksB=0;
         boolean finished=false,waiting=false,elevenDecision=false;
         String status="Sua vez — escolha uma carta";
-        RectF[] cardRects=new RectF[3],trucoRect=new RectF(),restartRect=new RectF(),play11Rect=new RectF(),run11Rect=new RectF();
+        RectF[] cardRects=new RectF[3]; RectF trucoRect=new RectF(),restartRect=new RectF(),play11Rect=new RectF(),run11Rect=new RectF();
 
         TrucoView(Context c){super(c);p.setTypeface(Typeface.create("sans",Typeface.BOLD));startMatch();}
 

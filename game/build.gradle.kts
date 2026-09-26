@@ -13,7 +13,7 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "2.0"
-        buildConfigField("String", "AI_ENDPOINT", "\"\")
+        buildConfigField("String", "AI_ENDPOINT", "\"\"")
     }
 
     compileOptions {

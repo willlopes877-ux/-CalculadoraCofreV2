@@ -533,13 +533,30 @@ public class MainActivity extends Activity {
                 c.drawText("Jogue uma carta",w/2,365,p);
                 return;
             }
+
+            // Cada carta fica na frente do avatar de quem a jogou.
+            // Sem nomes: a própria posição identifica o jogador.
+            final float cw=78, ch=108;
+            final float centerX=w/2f;
+            final float sideLeft=Math.max(78,cw/2f+12);
+            final float sideRight=Math.min(w-78,w-cw/2f-12);
+
             for(int i=0;i<n;i++){
                 Played x=trick.get(i);
-                float cx=w/2+(i-(n-1)/2f)*88;
-                float cy=285+(i%2)*28;
-                drawCard(c,x.card,cx-32,cy,64,88,true);
-                p.setColor(Color.WHITE);p.setTextSize(10);
-                c.drawText(x.player==0?"VOCÊ":players[x.player].name,cx,cy+102,p);
+                float cx, cy;
+
+                switch(x.player){
+                    case 0: // Você: carta acima da sua mão.
+                        cx=centerX; cy=430; break;
+                    case 1: // Parceira: na frente do avatar esquerdo.
+                        cx=sideLeft; cy=405; break;
+                    case 2: // Rival de cima: abaixo do avatar superior.
+                        cx=centerX; cy=395; break;
+                    default: // Rival da direita: na frente do avatar direito.
+                        cx=sideRight; cy=405; break;
+                }
+
+                drawCard(c,x.card,cx-cw/2f,cy,cw,ch,true);
             }
         }
 

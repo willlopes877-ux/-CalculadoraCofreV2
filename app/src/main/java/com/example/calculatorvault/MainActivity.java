@@ -20,6 +20,9 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     private String input = "";
+    private double calcValue = 0;
+    private String pendingOperator = "";
+    private boolean enteringSecond = false;
     private TextView display;
     private PinManager pinManager;
 
@@ -74,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
         b.setGravity(Gravity.CENTER);
 
         int bgColor;
-        if (key.equals("=") || key.equals("÷") || key.equals("×")
+        if (key.equals("ENTRAR") || key.equals("÷") || key.equals("×")
                 || key.equals("−") || key.equals("+")) {
             bgColor = ORANGE;
         } else if (key.equals("AC") || key.equals("⌫") || key.equals("%")) {
@@ -105,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
                 "7", "8", "9", "×",
                 "4", "5", "6", "−",
                 "1", "2", "3", "+",
-                "0", ".", "=", ""
+                "0", ".", "ENTRAR", ""
         };
 
         for (String key : keys) {
@@ -143,19 +146,66 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (key.equals("=")) {
-            unlockFromCalculator();
+        if (key.equals("ENTRAR")) {
+            if (!pendingOperator && input.matches("\\d{4,12}")) {
+                unlockFromCalculator();
+            } else {
+                calculateResult();
+            }
             return;
         }
 
-        // The calculator is intentionally also the PIN entry surface.
-        // Numeric keys build the secret code; visual operator keys are ignored
-        // so the hidden vault can only be opened with a numeric PIN.
+        if (key.equals("+") || key.equals("−") || key.equals("×") || key.equals("÷")) {
+            if (input.isEmpty() || input.equals("0")) return;
+            try {
+                calcValue = Double.parseDouble(input);
+                pendingOperator = key;
+                enteringSecond = true;
+                display.setText("0");
+                input = "";
+            } catch (Exception ignored) {}
+            return;
+        }
+
+        if (key.equals(".")) {
+            if (!input.contains(".")) {
+                input = input.isEmpty() ? "0." : input + ".";
+                display.setText(input);
+            }
+            return;
+        }
+
         if (key.matches("\\d")) {
             if (input.length() < 12) {
                 input += key;
                 display.setText(input);
             }
+        }
+    }
+
+    private void calculateResult() {
+        if (pendingOperator.isEmpty() || input.isEmpty()) return;
+        try {
+            double second = Double.parseDouble(input);
+            double result;
+            switch (pendingOperator) {
+                case "+": result = calcValue + second; break;
+                case "−": result = calcValue - second; break;
+                case "×": result = calcValue * second; break;
+                case "÷":
+                    if (second == 0) throw new ArithmeticException();
+                    result = calcValue / second; break;
+                default: return;
+            }
+            String shown = (result == Math.rint(result)) ? String.valueOf((long) result) : String.valueOf(result);
+            display.setText(shown);
+            input = shown;
+            pendingOperator = "";
+            enteringSecond = false;
+        } catch (Exception e) {
+            display.setText("Erro");
+            input = "";
+            pendingOperator = "";
         }
     }
 
@@ -179,6 +229,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void clearInput() {
         input = "";
+        calcValue = 0;
+        pendingOperator = "";
+        enteringSecond = false;
         if (display != null) display.setText("0");
     }
 
@@ -194,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this)
                 .setTitle("Configurar seus dois cofres")
-                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em = para abrir o cofre correspondente.")
+                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em ENTRAR para abrir o cofre correspondente.")
                 .setView(box)
                 .setCancelable(false)
                 .setPositiveButton("Salvar", null)

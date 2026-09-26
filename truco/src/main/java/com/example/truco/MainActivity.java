@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
         RectF[] cardRects=new RectF[3];
         RectF trucoRect=new RectF(), restartRect=new RectF();
         RectF play11Rect=new RectF(), run11Rect=new RectF(); RectF acceptRect=new RectF(), foldRect=new RectF(), raiseRect=new RectF(), coverRect=new RectF();
-        RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF(), menuGameRect=new RectF();
+        RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF(), menuGameRect=new RectF(), menuBackGameRect=new RectF(), restartGameRect=new RectF();
         RectF easyRect=new RectF(), normalRect=new RectF(), hardRect=new RectF();
         int difficulty=2;
 
@@ -444,6 +444,10 @@ public class MainActivity extends Activity {
 
             menuGameRect.set(10,10,88,48);
             button(c,menuGameRect,"☰",Color.rgb(42,58,50),18);
+            menuBackGameRect.set(8,55,112,97);
+            restartGameRect.set(118,55,230,97);
+            button(c,menuBackGameRect,"MENU",Color.rgb(42,58,50),13);
+            button(c,restartGameRect,"REINICIAR",Color.rgb(55,75,60),13);
 
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);
@@ -681,7 +685,8 @@ public class MainActivity extends Activity {
             }
 
             if(finished&&restartRect.contains(x,y)){startMatch();return true;}
-            if(menuGameRect.contains(x,y)){screen=0;waiting=false;pendingRaise=false;elevenDecision=false;invalidate();return true;}
+            if(menuGameRect.contains(x,y)||menuBackGameRect.contains(x,y)){screen=0;waiting=false;pendingRaise=false;elevenDecision=false;invalidate();return true;}
+            if(restartGameRect.contains(x,y)){startMatch();return true;}
             if(elevenDecision){
                 if(play11Rect.contains(x,y))play11();
                 else if(run11Rect.contains(x,y))run11();

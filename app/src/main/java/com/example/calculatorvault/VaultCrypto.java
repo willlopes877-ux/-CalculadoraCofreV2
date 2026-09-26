@@ -66,18 +66,22 @@ public class VaultCrypto {
 
         SecretKey key = getOrCreateKey();
 
-        byte[] iv = new byte[IV_SIZE];
-        new SecureRandom().nextBytes(iv);
-
+        // O Android Keystore pode bloquear IV fornecido pelo aplicativo.
+        // Por isso deixamos o próprio Keystore gerar um IV aleatório seguro.
         Cipher cipher = Cipher.getInstance(
                 "AES/GCM/NoPadding"
         );
 
         cipher.init(
                 Cipher.ENCRYPT_MODE,
-                key,
-                new GCMParameterSpec(TAG_SIZE, iv)
+                key
         );
+
+        byte[] iv = cipher.getIV();
+
+        if (iv == null || iv.length != IV_SIZE) {
+            throw new Exception("Não foi possível gerar o IV de criptografia.");
+        }
 
         try (
                 FileOutputStream output =

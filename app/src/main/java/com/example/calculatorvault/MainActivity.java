@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
         b.setGravity(Gravity.CENTER);
 
         int bgColor;
-        if (key.equals("ENTRAR") || key.equals("÷") || key.equals("×")
+        if (key.equals("=") || key.equals("÷") || key.equals("×")
                 || key.equals("−") || key.equals("+")) {
             bgColor = ORANGE;
         } else if (key.equals("AC") || key.equals("⌫") || key.equals("%")) {
@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
                 "7", "8", "9", "×",
                 "4", "5", "6", "−",
                 "1", "2", "3", "+",
-                "0", ".", "ENTRAR", ""
+                "0", ".", "=", ""
         };
 
         for (String key : keys) {
@@ -145,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (key.equals("ENTRAR")) {
+        if (key.equals("=")) {
             if (pendingOperator.isEmpty() && input.matches("\\d{4,12}")) {
                 unlockFromCalculator();
             } else {
@@ -246,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Configurar seus dois cofres")
-                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em ENTRAR para abrir o cofre correspondente.")
+                .setMessage("Crie dois PINs diferentes. Na calculadora, digite o PIN e toque em = para abrir o cofre correspondente.")
                 .setView(box)
                 .setCancelable(false)
                 .setPositiveButton("Salvar", null)

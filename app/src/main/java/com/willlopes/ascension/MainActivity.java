@@ -8,11 +8,24 @@ import android.content.Context;
 import java.util.*;
 
 public class MainActivity extends Activity {
+    private GameView gameView;
+
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
         getWindow().setStatusBarColor(Color.BLACK);
         getWindow().setNavigationBarColor(Color.BLACK);
-        setContentView(new GameView(this));
+        gameView = new GameView(this);
+        setContentView(gameView);
+    }
+
+    @Override protected void onPause() {
+        super.onPause();
+        if (gameView != null) gameView.setPaused(true);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (gameView != null) gameView.setPaused(false);
     }
 
     static class GameView extends View {
@@ -20,12 +33,48 @@ public class MainActivity extends Activity {
         Random random = new Random();
         int screen=0, level=1, xp=0, maxHp=100, hp=100, enemiesDefeated=0;
         float playerX=540, playerY=1120;
-        boolean left=false,right=false, attacking=false, skillReady=true, boss=false, victory=false;
+        boolean left=false,right=false, attacking=false, skillReady=true, boss=false, victory=false, paused=false;
         long attackUntil=0, skillUntil=0, lastSpawn=0, lastFrame=0;
         ArrayList<Enemy> enemies=new ArrayList<>();
         ArrayList<Particle> particles=new ArrayList<>();
 
-        GameView(Context c){ super(c); p.setTypeface(Typeface.create("sans",Typeface.BOLD)); }
+        GameView(Context c){
+            super(c);
+            p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+            setFocusable(true);
+        }
+
+        void setPaused(boolean value){
+            paused = value;
+            left = false;
+            right = false;
+            attacking = false;
+            lastFrame = System.currentTimeMillis();
+            if (!paused) postInvalidateOnAnimation();
+        }
+
+        void resetGame(){
+            screen = 1;
+            level = 1;
+            xp = 0;
+            maxHp = 100;
+            hp = maxHp;
+            enemiesDefeated = 0;
+            playerX = 540;
+            playerY = 1120;
+            left = false;
+            right = false;
+            attacking = false;
+            skillReady = true;
+            boss = false;
+            victory = false;
+            attackUntil = 0;
+            skillUntil = 0;
+            lastSpawn = 0;
+            lastFrame = System.currentTimeMillis();
+            enemies.clear();
+            particles.clear();
+        }
 
         protected void onDraw(Canvas c){
             super.onDraw(c);
@@ -33,7 +82,7 @@ public class MainActivity extends Activity {
             c.save(); c.scale(sx,sy);
             if(screen==0) drawMenu(c); else drawGame(c);
             c.restore();
-            invalidate();
+            if (screen == 1 && !paused) postInvalidateOnAnimation();
         }
 
         void txt(Canvas c,String s,float x,float y,float size,int color,Paint.Align align){
@@ -113,7 +162,7 @@ public class MainActivity extends Activity {
         void update(long now){
             if(lastFrame==0){lastFrame=now;return;}
             float dt=Math.min(0.04f,(now-lastFrame)/1000f); lastFrame=now;
-            if(screen!=1||victory)return;
+            if(screen!=1||victory||paused)return;
             if(left)playerX-=420*dt;if(right)playerX+=420*dt;
             playerX=Math.max(80,Math.min(1000,playerX));
             if(!boss && enemiesDefeated>=8){boss=true; enemies.clear(); enemies.add(new Enemy(540,1050,true));}
@@ -122,13 +171,13 @@ public class MainActivity extends Activity {
                 Enemy e=enemies.get(i);
                 float dx=playerX-e.x,dy=(playerY-e.y),d=(float)Math.sqrt(dx*dx+dy*dy);
                 if(d>95){e.x+=dx/d*70*dt;e.y+=dy/d*70*dt;}
-                else if(now-e.lastHit>900){hp-=e.boss?10:5;e.lastHit=now;}
+                else if(now-e.lastHit>900){hp=Math.max(0,hp-(e.boss?10:5));e.lastHit=now;}
                 if(attacking && now<attackUntil && d<230 && now-e.lastHitPlayer>300){
                     e.hp-=level*35;e.lastHitPlayer=now;particles.add(new Particle(e.x,e.y,Color.rgb(220,140,255)));
                 }
                 if(e.hp<=0){enemies.remove(i);enemiesDefeated++;gainXp(e.boss?150:25);}
             }
-            if(hp<=0){hp=maxHp;xp=0;level=1;enemiesDefeated=0;boss=false;enemies.clear();}
+            if(hp<=0){resetGame();}
             if(now>attackUntil)attacking=false;
             if(now>skillUntil)skillReady=true;
             for(int i=particles.size()-1;i>=0;i--){Particle q=particles.get(i);q.r-=80*dt;if(q.r<=0)particles.remove(i);}
@@ -142,9 +191,10 @@ public class MainActivity extends Activity {
 
         public boolean onTouchEvent(MotionEvent e){
             float x=e.getX()*1080f/getWidth(), y=e.getY()*1920f/getHeight();
+            if(paused) return true;
             if(e.getAction()==MotionEvent.ACTION_DOWN){
-                if(screen==0 && x>240&&x<840&&y>1200&&y<1450){screen=1;lastFrame=0;return true;}
-                if(victory && y>1000&&y<1230){victory=false;boss=false;enemiesDefeated=0;level=Math.max(level,3);return true;}
+                if(screen==0 && x>240&&x<840&&y>1200&&y<1450){resetGame();return true;}
+                if(victory && y>1000&&y<1230){victory=false;boss=false;enemiesDefeated=0;lastSpawn=0;enemies.clear();return true;}
                 if(y>1550&&x<500){if(x<250)left=true;else right=true;return true;}
                 if(y>1500&&x>680&&x<920){attacking=true;attackUntil=System.currentTimeMillis()+260;return true;}
                 if(y>1580&&x>900){if(skillReady){skillReady=false;skillUntil=System.currentTimeMillis()+3000;for(Enemy q:enemies)q.hp-=level*20;particles.add(new Particle(playerX,playerY,Color.rgb(90,170,255)));}return true;}

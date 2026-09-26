@@ -22,7 +22,9 @@ public class MainActivity extends Activity {
         final ArrayList<Particle> particles = new ArrayList<>();
         float d, w, h, playerX, enemyX, enemyY;
         float playerHp=100, enemyHp=100, xp=0, shake=0;
-        int level=1, enemyLevel=1, damage=18, defense=0, kills=0;
+        int level=1, enemyLevel=1, damage=18, defense=2, kills=0, combo=0;
+        long lastAttack=0, dodgeUntil=0, enemyAttackAt=0, enemyTelegraphUntil=0;
+        boolean dodging=false, enemyWarning=false;
         boolean attacking=false, skillReady=false, gameOver=false;
         long attackUntil=0, lastFrame=0, enemyHitAt=0, skillUntil=0;
         int flash=0;
@@ -70,11 +72,26 @@ public class MainActivity extends Activity {
             if(gameOver) return;
 
             if(now>attackUntil) attacking=false;
-            if(now>skillUntil) skillReady = level>=2;
+            if(now>dodgeUntil) dodging=false;
+            skillReady = level>=2 && now>skillUntil;
+            enemyWarning = enemyTelegraphUntil > now;
 
             float dist=playerX-enemyX;
-            if(Math.abs(dist)>dp(105)) enemyX += Math.signum(dist)*dp(42)*dt;
-            if(Math.abs(dist)<=dp(110) && now-enemyHitAt>1150){
+            if(Math.abs(dist)>dp(125)) enemyX += Math.signum(dist)*dp(38)*dt;
+            if(Math.abs(dist)<=dp(155) && now>enemyAttackAt){
+                enemyAttackAt=now+1450-Math.min(350,enemyLevel*25);
+                enemyTelegraphUntil=now+500;
+            }
+            if(enemyTelegraphUntil>0 && enemyTelegraphUntil<=now){
+                enemyTelegraphUntil=0;
+                if(!dodging){
+                    playerHp-=Math.max(5,12+enemyLevel*2-defense);
+                    burst(playerX,h*.48f,12);
+                    shake=.55f;
+                    if(playerHp<=0){ playerHp=0; gameOver=true; }
+                }
+            }
+            if(Math.abs(dist)<=dp(155) && now-enemyHitAt>1600 && enemyTelegraphUntil==0){
                 enemyHitAt=now;
                 playerHp-=Math.max(5,12+enemyLevel*2-defense);
                 flash=10; shake=.6f; burst(playerX,h*.48f,8);
@@ -97,9 +114,9 @@ public class MainActivity extends Activity {
 
         void defeatEnemy(long now){
             kills++;
-            float gain=35+enemyLevel*8;
+            float gain=42+enemyLevel*10;
             xp+=gain;
-            burst(enemyX,enemyY,28);
+            burst(enemyX,enemyY,34);
             enemyLevel++;
             enemyHp=100+enemyLevel*18;
             enemyX=w*.72f;
@@ -135,7 +152,8 @@ public class MainActivity extends Activity {
         }
 
         void drawPlayer(Canvas c){
-            float y=h*.48f, bob=(float)Math.sin(System.currentTimeMillis()/150.0)*dp(3);
+            float y=h*.48f, bob=(float)Math.sin(System.currentTimeMillis()/120.0)*dp(3);
+            if(dodging) bob-=dp(10);
             float x=playerX;
             p.setColor(Color.argb(90,0,0,0)); c.drawOval(x-dp(42),y+dp(48),x+dp(42),y+dp(62),p);
             p.setColor(Color.rgb(60,115,245)); c.drawRoundRect(x-dp(26),y-dp(8)+bob,x+dp(26),y+dp(48)+bob,dp(16),dp(16),p);
@@ -143,7 +161,7 @@ public class MainActivity extends Activity {
             p.setColor(Color.rgb(35,35,45)); c.drawArc(x-dp(24),y-dp(55)+bob,x+dp(24),y-dp(18)+bob,180,180,true,p);
             p.setColor(Color.WHITE); c.drawCircle(x-dp(8),y-dp(34)+bob,dp(3),p); c.drawCircle(x+dp(8),y-dp(34)+bob,dp(3),p);
             if(attacking){
-                p.setColor(Color.argb(180,100,210,255));
+                p.setColor(Color.argb(210,100,215,255));
                 p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(9));
                 c.drawArc(x+dp(5),y-dp(42),x+dp(125),y+dp(45),-65,120,false,p);
                 p.setStyle(Paint.Style.FILL);
@@ -157,6 +175,7 @@ public class MainActivity extends Activity {
             p.setColor(Color.rgb(90,35,50)); c.drawCircle(x,y-dp(30),dp(25),p);
             p.setColor(Color.rgb(255,215,70)); c.drawCircle(x-dp(9),y-dp(32),dp(4),p); c.drawCircle(x+dp(9),y-dp(32),dp(4),p);
             p.setColor(Color.rgb(55,15,25)); c.drawRect(x-dp(18),y-dp(52),x+dp(18),y-dp(35),p);
+            if(enemyWarning){ p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(4)); p.setColor(Color.rgb(255,90,80)); c.drawCircle(x,y,dp(58),p); p.setStyle(Paint.Style.FILL); text(c,"!",x,y-dp(66),dp(22),Color.rgb(255,100,90),true,Paint.Align.CENTER); }
             bar(c,x-dp(48),y-dp(78),x+dp(48),y-dp(69),enemyHp,(100+enemyLevel*18),Color.rgb(245,75,90));
             text(c,"LV "+enemyLevel,x,y-dp(88),dp(12),Color.WHITE,true,Paint.Align.CENTER);
         }
@@ -178,14 +197,18 @@ public class MainActivity extends Activity {
             bar(c,w*.57f,dp(67),w-dp(18),dp(80),playerHp,100,Color.rgb(65,220,130));
             text(c,"HP "+(int)playerHp,w-dp(25),dp(78),dp(10),Color.WHITE,true,Paint.Align.RIGHT);
             text(c,"ATQ "+damage+"   DEF "+defense+"   VITÓRIAS "+kills,w/2,dp(105),dp(11),Color.WHITE,true,Paint.Align.CENTER);
+            if(combo>1) text(c,"COMBO x"+combo,w/2,dp(127),dp(14),Color.rgb(255,210,80),true,Paint.Align.CENTER);
         }
 
         void drawControls(Canvas c){
             float y=h-dp(82);
-            button(c,dp(28),y,dp(88),y+dp(58),"◀",Color.rgb(50,60,85));
-            button(c,dp(126),y,dp(186),y+dp(58),"⚡",skillReady?Color.rgb(100,55,210):Color.rgb(55,55,70));
-            button(c,w-dp(116),y,w-dp(28),y+dp(58),"ATACAR",Color.rgb(210,65,80));
-            text(c,level>=2?"HABILIDADE PRONTA":"DESBLOQUEIA NO LV 2",dp(156),y-dp(8),dp(9),Color.LTGRAY,false,Paint.Align.CENTER);
+            button(c,dp(18),y,dp(82),y+dp(58),"◀",Color.rgb(48,59,83));
+            button(c,dp(88),y,dp(152),y+dp(58),"▶",Color.rgb(48,59,83));
+            button(c,dp(158),y,dp(224),y+dp(58),"⚡",skillReady?Color.rgb(102,58,210):Color.rgb(55,55,70));
+            button(c,w-dp(150),y,w-dp(82),y+dp(58),"↗",Color.rgb(45,135,180));
+            button(c,w-dp(74),y,w-dp(16),y+dp(58),"⚔",Color.rgb(210,62,78));
+            text(c,skillReady?"HABILIDADE":"LV 2",dp(191),y-dp(8),dp(9),Color.LTGRAY,false,Paint.Align.CENTER);
+            text(c,"ESQUIVA",w-dp(116),y-dp(8),dp(9),Color.LTGRAY,false,Paint.Align.CENTER);
         }
 
         void drawGameOver(Canvas c){
@@ -230,21 +253,43 @@ public class MainActivity extends Activity {
                 float x=e.getX(), y=e.getY();
                 float by=h-dp(82);
                 if(y>=by){
-                    if(x<dp(120)){ playerX=Math.max(dp(70),playerX-dp(55)); }
-                    else if(x<dp(320) && level>=2){ useSkill(); }
-                    else if(x>w-dp(135)){ attack(); }
+                    if(x<dp(88)){ move(-1); }
+                    else if(x<dp(158)){ move(1); }
+                    else if(x<dp(235)){ useSkill(); }
+                    else if(x>w-dp(150) && x<w-dp(74)){ dodge(); }
+                    else if(x>=w-dp(74)){ attack(); }
                 }
             }
             return true;
         }
 
         void attack(){
-            attacking=true; attackUntil=System.currentTimeMillis()+220;
+            long now=System.currentTimeMillis();
+            if(now-lastAttack<260 || dodging) return;
+            combo=(now-lastAttack<900)?Math.min(3,combo+1):1;
+            lastAttack=now; attacking=true; attackUntil=now+220;
             if(Math.abs(playerX-enemyX)<dp(190)){
-                enemyHp-=damage;
-                burst(enemyX,enemyY,10); shake=.35f;
-                if(enemyHp<=0) defeatEnemy(System.currentTimeMillis());
+                int hit=damage+(combo-1)*5;
+                boolean crit=combo==3 && rnd.nextFloat()<.28f;
+                if(crit) hit*=2;
+                enemyHp-=hit;
+                burst(enemyX,enemyY,crit?24:12);
+                shake=crit?.8f:.4f;
+                if(enemyHp<=0) defeatEnemy(now);
             }
+        }
+
+        void dodge(){
+            long now=System.currentTimeMillis();
+            if(now<dodgeUntil) return;
+            dodging=true; dodgeUntil=now+520;
+            playerX=Math.min(w*.55f,playerX+dp(48));
+            burst(playerX,h*.48f,14);
+        }
+
+        void move(float dir){
+            if(gameOver || dodging) return;
+            playerX=Math.max(dp(65),Math.min(w*.55f,playerX+dir*dp(55)));
         }
 
         void useSkill(){
@@ -255,7 +300,7 @@ public class MainActivity extends Activity {
         }
 
         void reset(){
-            playerHp=100; xp=0; level=1; enemyLevel=1; damage=18; defense=0; kills=0;
+            playerHp=100; xp=0; level=1; enemyLevel=1; damage=18; defense=2; kills=0; combo=0; lastAttack=0; dodgeUntil=0; enemyAttackAt=System.currentTimeMillis()+900; enemyTelegraphUntil=0;
             enemyHp=100; playerX=w*.30f; enemyX=w*.72f; gameOver=false; particles.clear();
         }
 

@@ -1,18 +1,16 @@
 package com.example.calculatorvault;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
-import android.view.LayoutInflater;
+import android.graphics.Color;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.File;
 import java.util.List;
 
 public class VaultAdapter
@@ -22,15 +20,22 @@ public class VaultAdapter
         void onItemClick(VaultItem item);
     }
 
+    public interface OnItemDeleteListener {
+        void onItemDelete(VaultItem item);
+    }
+
     private final List<VaultItem> items;
     private final OnItemClickListener listener;
+    private final OnItemDeleteListener deleteListener;
 
     public VaultAdapter(
             List<VaultItem> items,
-            OnItemClickListener listener
+            OnItemClickListener listener,
+            OnItemDeleteListener deleteListener
     ) {
         this.items = items;
         this.listener = listener;
+        this.deleteListener = deleteListener;
     }
 
     @NonNull
@@ -39,16 +44,38 @@ public class VaultAdapter
             @NonNull ViewGroup parent,
             int viewType
     ) {
+        LinearLayout row = new LinearLayout(parent.getContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        int padding = dp(parent, 8);
+        row.setPadding(padding, padding, padding, padding);
 
-        View view =
-                LayoutInflater.from(parent.getContext())
-                        .inflate(
-                                android.R.layout.simple_list_item_2,
-                                parent,
-                                false
-                        );
+        LinearLayout textBox = new LinearLayout(parent.getContext());
+        textBox.setOrientation(LinearLayout.VERTICAL);
 
-        return new ViewHolder(view);
+        TextView title = new TextView(parent.getContext());
+        title.setTextSize(16);
+        title.setTextColor(Color.BLACK);
+
+        TextView subtitle = new TextView(parent.getContext());
+        subtitle.setTextSize(14);
+
+        textBox.addView(title);
+        textBox.addView(subtitle);
+
+        Button delete = new Button(parent.getContext());
+        delete.setText("🗑️");
+        delete.setTextSize(18);
+        delete.setContentDescription("Excluir arquivo");
+
+        row.addView(textBox, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+        ));
+        row.addView(delete, new LinearLayout.LayoutParams(
+                dp(parent, 64), ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        return new ViewHolder(row, title, subtitle, delete);
     }
 
     @Override
@@ -56,13 +83,11 @@ public class VaultAdapter
             @NonNull ViewHolder holder,
             int position
     ) {
-
         VaultItem item = items.get(position);
 
         holder.title.setText(item.getName());
 
         String type;
-
         if (item.isVideo()) {
             type = "🎬 Vídeo";
         } else if (item.isImage()) {
@@ -71,13 +96,14 @@ public class VaultAdapter
             type = "📁 Arquivo";
         }
 
-        holder.subtitle.setText(
-                type + " • " +
-                formatSize(item.getSize())
-        );
+        holder.subtitle.setText(type + " • " + formatSize(item.getSize()));
 
         holder.itemView.setOnClickListener(
                 v -> listener.onItemClick(item)
+        );
+
+        holder.delete.setOnClickListener(
+                v -> deleteListener.onItemDelete(item)
         );
     }
 
@@ -87,42 +113,32 @@ public class VaultAdapter
     }
 
     private String formatSize(long bytes) {
-
-        if (bytes < 1024) {
-            return bytes + " B";
-        }
-
+        if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) {
-            return String.format(
-                    "%.1f KB",
-                    bytes / 1024.0
-            );
+            return String.format("%.1f KB", bytes / 1024.0);
         }
-
-        return String.format(
-                "%.1f MB",
-                bytes / (1024.0 * 1024.0)
-        );
+        return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
     }
 
-    public static class ViewHolder
-            extends RecyclerView.ViewHolder {
+    private int dp(ViewGroup parent, int value) {
+        return (int) (value * parent.getResources().getDisplayMetrics().density + 0.5f);
+    }
 
+    public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title;
         TextView subtitle;
+        Button delete;
 
-        public ViewHolder(@NonNull View itemView) {
+        public ViewHolder(
+                @NonNull View itemView,
+                TextView title,
+                TextView subtitle,
+                Button delete
+        ) {
             super(itemView);
-
-            title =
-                    itemView.findViewById(
-                            android.R.id.text1
-                    );
-
-            subtitle =
-                    itemView.findViewById(
-                            android.R.id.text2
-                    );
+            this.title = title;
+            this.subtitle = subtitle;
+            this.delete = delete;
         }
     }
 }

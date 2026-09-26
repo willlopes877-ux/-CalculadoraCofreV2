@@ -5,6 +5,16 @@ import android.os.Bundle;
 import android.graphics.*;
 import android.view.*;
 import android.content.Context;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.content.Intent;
+import android.os.Handler;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class MainActivity extends Activity {
@@ -19,12 +29,38 @@ public class MainActivity extends Activity {
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         final Random rnd = new Random();
         final ArrayList<Particle> particles = new ArrayList<>();
+        final Handler handler = new Handler();
+        SpeechRecognizer speechRecognizer;
+        TextToSpeech tts;
+        boolean listening=false, aiBusy=false;
+        String voiceStatus="MIC: toque para falar";
+        String playerSpeech="", aiVoiceReply="";
         float d,w,h,playerX,enemyX,playerHp=100,enemyHp=100,xp,shake,skillCharge;\n        int aiMood=0, aiAggression=1;\n        long aiThinkAt, aiDodgeUntil;\n        String aiLine="IA: analisando você...";
         int level=1,enemyLevel=1,damage=20,defense=3,kills,combo;
         long lastAttack,dodgeUntil,enemyAttackAt,enemyTelegraphUntil,attackUntil,skillFlashUntil,lastFrame;
         boolean dodging,enemyWarning,attacking,paused,gameOver,playerHit;
 
-        ArenaView(Context c){super(c);d=getResources().getDisplayMetrics().density;setFocusable(true);}
+        ArenaView(Context c){
+            super(c); d=getResources().getDisplayMetrics().density; setFocusable(true);
+            tts=new TextToSpeech(c,status->{ if(status==TextToSpeech.SUCCESS) tts.setLanguage(new Locale("pt","BR")); });
+            if(SpeechRecognizer.isRecognitionAvailable(c)){
+                speechRecognizer=SpeechRecognizer.createSpeechRecognizer(c);
+                speechRecognizer.setRecognitionListener(new RecognitionListener(){
+                    public void onReadyForSpeech(Bundle p){listening=true;voiceStatus="Ouvindo...";invalidate();}
+                    public void onBeginningOfSpeech(){voiceStatus="Fale com o vilão...";invalidate();}
+                    public void onRmsChanged(float r){}
+                    public void onBufferReceived(byte[] b){}
+                    public void onEndOfSpeech(){listening=false;voiceStatus="Processando...";invalidate();}
+                    public void onError(int e){listening=false;voiceStatus="MIC: toque para falar";invalidate();}
+                    public void onResults(Bundle b){
+                        ArrayList<String> a=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                        if(a!=null&&!a.isEmpty()) askAI(a.get(0)); else {voiceStatus="MIC: não entendi";invalidate();}
+                    }
+                    public void onPartialResults(Bundle b){}
+                    public void onEvent(int t,Bundle b){}
+                });
+            }
+        }
         float dp(float v){return v*d;}
         @Override protected void onSizeChanged(int sw,int sh,int ow,int oh){w=sw;h=sh;playerX=w*.28f;enemyX=w*.72f;}
 
@@ -146,6 +182,10 @@ public class MainActivity extends Activity {
             button(c,w-dp(150),y,w-dp(82),y+dp(58),"↗",Color.rgb(45,140,185));
             button(c,w-dp(74),y,w-dp(14),y+dp(58),"⚔",Color.rgb(210,60,75));
             button(c,w-dp(150),dp(16),w-dp(16),dp(61),paused?"▶":"Ⅱ",paused?Color.rgb(50,150,100):Color.rgb(65,75,100));
+            button(c,dp(16),dp(145),dp(150),dp(193),listening?"●":"🎙",listening?Color.rgb(190,55,70):Color.rgb(55,85,125));
+            text(c,voiceStatus,dp(20),dp(210),dp(9),Color.LTGRAY,false,Paint.Align.LEFT);
+            if(!playerSpeech.isEmpty()) text(c,"Você: "+trim(playerSpeech,34),dp(20),dp(228),dp(9),Color.WHITE,false,Paint.Align.LEFT);
+            if(!aiVoiceReply.isEmpty()) text(c,"IA: "+trim(aiVoiceReply,42),dp(20),dp(245),dp(9),Color.rgb(255,220,130),true,Paint.Align.LEFT);
             text(c,"ESPECIAL",dp(186),y-dp(7),dp(8),Color.LTGRAY,true,Paint.Align.CENTER);
             text(c,"ESQUIVA",w-dp(116),y-dp(7),dp(9),Color.LTGRAY,false,Paint.Align.CENTER);
         }
@@ -163,6 +203,7 @@ public class MainActivity extends Activity {
             float x=e.getX(),y=e.getY();
             if(gameOver){reset();return true;}
             if(x>w-dp(150)&&y<dp(75)){paused=!paused;return true;}
+            if(x>=dp(16)&&x<=dp(150)&&y>=dp(145)&&y<=dp(193)){toggleMic();return true;}
             if(paused)return true;
             float by=h-dp(82);
             if(y>=by){
@@ -188,6 +229,69 @@ public class MainActivity extends Activity {
         void dodge(){long now=System.currentTimeMillis();if(now<dodgeUntil)return;dodging=true;dodgeUntil=now+520;playerX=Math.min(w*.56f,playerX+dp(60));burst(playerX,h*.48f,20);}
         void move(float dir){if(gameOver||dodging)return;playerX=Math.max(dp(65),Math.min(w*.56f,playerX+dir*dp(55)));}
         void useSkill(){if(skillCharge<100)return;skillCharge=0; aiLine="IA: especial detectado!";skillFlashUntil=System.currentTimeMillis()+350;enemyHp-=damage*4.5f;burst(enemyX,h*.48f,90);shake=1.2f;if(enemyHp<=0)defeatEnemy(System.currentTimeMillis());}
+        void toggleMic(){
+            if(speechRecognizer==null){voiceStatus="Microfone indisponível";invalidate();return;}
+            if(listening){speechRecognizer.stopListening();listening=false;voiceStatus="MIC: toque para falar";invalidate();return;}
+            Intent i=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"pt-BR");
+            speechRecognizer.startListening(i);
+        }
+
+        void askAI(String text){
+            playerSpeech=text; aiBusy=true; voiceStatus="IA pensando..."; invalidate();
+            String endpoint=BuildConfig.AI_ENDPOINT;
+            if(endpoint==null||endpoint.trim().isEmpty()){
+                aiBusy=false; aiVoiceReply=localVoiceReply(text); voiceStatus="MIC: toque para falar"; speak(aiVoiceReply); invalidate(); return;
+            }
+            new Thread(()->{
+                try{
+                    String body="{\"message\":\""+jsonEscape(text)+"\",\"gameState\":{\"level\":"+level+",\"playerHp\":"+((int)playerHp)+",\"enemyHp\":"+((int)enemyHp)+",\"combo\":"+combo+",\"skill\":"+((int)skillCharge)+"}}";
+                    HttpURLConnection con=(HttpURLConnection)new URL(endpoint).openConnection();
+                    con.setRequestMethod("POST"); con.setConnectTimeout(8000); con.setReadTimeout(15000);
+                    con.setDoOutput(true); con.setRequestProperty("Content-Type","application/json");
+                    con.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+                    InputStream is=con.getResponseCode()>=400?con.getErrorStream():con.getInputStream();
+                    String resp=readAll(is); String reply=extractJson(resp,"reply");
+                    if(reply.isEmpty()) reply="Ainda não consigo responder agora.";
+                    final String finalReply=reply;
+                    handler.post(()->{aiBusy=false;aiVoiceReply=finalReply;voiceStatus="MIC: toque para falar";speak(finalReply);invalidate();});
+                    con.disconnect();
+                }catch(Exception ex){
+                    handler.post(()->{aiBusy=false;aiVoiceReply="Conexão segura indisponível.";voiceStatus="MIC: toque para falar";speak(aiVoiceReply);invalidate();});
+                }
+            }).start();
+        }
+        String localVoiceReply(String t){
+            String q=t.toLowerCase(Locale.ROOT);
+            if(q.contains("quem é você")) return "Eu sou o vilão da Arena. Estou aprendendo seus golpes.";
+            if(q.contains("medo")) return "Medo? Eu fui criado para enfrentar você.";
+            if(q.contains("oi")||q.contains("olá")) return "Olá, herói. Vamos ver se sua luta é tão boa quanto sua conversa.";
+            return combo>=3?"Cuidado. Eu já entendi seu combo.":"Estou analisando seus movimentos. Tente me surpreender.";
+        }
+        String jsonEscape(String v){return v.replace("\\","\\\\").replace("\"","\\\"").replace("\n"," ");}
+
+        String readAll(InputStream in)throws Exception{
+            if(in==null)return "";
+            BufferedReader br=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8));
+            StringBuilder b=new StringBuilder(); String line; while((line=br.readLine())!=null)b.append(line); br.close(); return b.toString();
+        }
+        String extractJson(String json,String key){
+            String k="\""+key+"\""; int i=json.indexOf(k); if(i<0)return "";
+            int c=json.indexOf(':',i+k.length()); if(c<0)return "";
+            int a=json.indexOf('"',c+1); if(a<0)return "";
+            StringBuilder out=new StringBuilder(); boolean esc=false;
+            for(int j=a+1;j<json.length();j++){char ch=json.charAt(j); if(esc){out.append(ch);esc=false;} else if(ch=='\\')esc=true; else if(ch=='"')break; else out.append(ch);}
+            return out.toString();
+        }
+        String trim(String s,int n){return s.length()>n?s.substring(0,n-1)+"…":s;}
+        void speak(String text){if(tts!=null)tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"villain");}
+        @Override protected void onDetachedFromWindow(){
+            if(speechRecognizer!=null){speechRecognizer.destroy();speechRecognizer=null;}
+            if(tts!=null){tts.stop();tts.shutdown();tts=null;}
+            super.onDetachedFromWindow();
+        }
+
         void reset(){playerHp=100;xp=0;skillCharge=0;level=1;enemyLevel=1;damage=20;defense=3;kills=0;combo=0;lastAttack=0;dodgeUntil=0;enemyAttackAt=System.currentTimeMillis()+900;enemyTelegraphUntil=0;enemyHp=100;aiMood=0;aiAggression=1;aiLine="IA: analisando você...";aiThinkAt=System.currentTimeMillis()+700;aiDodgeUntil=0;playerX=w*.28f;enemyX=w*.72f;gameOver=false;paused=false;particles.clear();}
 
         static class Particle{float x,y,vx,vy,life,r;int kind;}

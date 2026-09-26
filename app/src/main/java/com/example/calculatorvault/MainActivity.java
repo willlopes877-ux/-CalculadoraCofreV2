@@ -133,8 +133,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void press(String key) {
         if (key.equals("AC")) {
-            input = "";
-            display.setText("0");
+            clearInput();
             return;
         }
 

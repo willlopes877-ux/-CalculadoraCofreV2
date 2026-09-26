@@ -161,6 +161,14 @@ public class MainActivity extends Activity {
             text(c,"LV "+enemyLevel,x,y-dp(88),dp(12),Color.WHITE,true,Paint.Align.CENTER);
         }
 
+        void drawParticles(Canvas c){
+            for(Particle q: particles){
+                float alpha=Math.max(0,Math.min(255,(q.life/.85f)*255));
+                p.setColor(Color.argb((int)alpha,255,190,70));
+                c.drawCircle(q.x,q.y,q.r,p);
+            }
+        }
+
         void drawHud(Canvas c){
             text(c,"ARENA HERO",dp(18),dp(32),dp(20),Color.WHITE,true,Paint.Align.LEFT);
             text(c,"NÍVEL "+level,dp(18),dp(57),dp(13),Color.rgb(150,210,255),true,Paint.Align.LEFT);

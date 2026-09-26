@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.graphics.*;
 import android.view.*;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -23,6 +24,9 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(7,9,16));
         getWindow().setNavigationBarColor(Color.rgb(7,9,16));
         setContentView(new ArenaView(this));
+        if(android.os.Build.VERSION.SDK_INT>=23 && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO},1001);
+        }
     }
 
     static class ArenaView extends View {

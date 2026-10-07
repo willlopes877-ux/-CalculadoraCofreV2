@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
         RectF play11Rect=new RectF(), run11Rect=new RectF(); RectF acceptRect=new RectF(), foldRect=new RectF(), raiseRect=new RectF(), coverRect=new RectF();
         RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF(), menuGameRect=new RectF(), menuBackGameRect=new RectF(), restartGameRect=new RectF();
         RectF easyRect=new RectF(), normalRect=new RectF(), hardRect=new RectF();
-        int difficulty=2; String mode="PAULISTA"; RectF paulistaRect=new RectF(), mineiroRect=new RectF();
+        int difficulty=2; int aiStyle=2; String mode="PAULISTA"; RectF paulistaRect=new RectF(), mineiroRect=new RectF(); RectF aggressiveRect=new RectF(), strategistRect=new RectF(), blufferRect=new RectF();
         HashMap<String,Integer> rivalRaises=new HashMap<>(), rivalFolds=new HashMap<>(), rivalBluffs=new HashMap<>();
         ArrayList<String> trickHistory=new ArrayList<>();
         int opponentAggression=0, opponentFoldsToRaise=0, opponentSuccessfulBluffs=0;
@@ -171,23 +171,56 @@ public class MainActivity extends Activity {
         }
 
         int strategicScore(Player pl){
-            int base=handScore(pl); int win=winProbability(pl);
-            int pressure=(teamBPoints-teamAPoints)*3;
-            if(pl==p0) pressure=(teamAPoints-teamBPoints)*3;
+            int base=handScore(pl), win=winProbability(pl);
+            int pressure=pl.teamA?(teamAPoints-teamBPoints)*3:(teamBPoints-teamAPoints)*3;
             int aggression=opponentAggression*2-opponentFoldsToRaise;
-            return base+win/3+pressure+aggression;
+            int styleBonus=aiStyle==1?12:aiStyle==2?8:16;
+            return base+win/3+pressure+aggression+styleBonus;
+        }
+
+        String aiStyleName(){
+            return aiStyle==1?"AGRESSIVA":aiStyle==2?"ESTRATEGISTA":"BLEFADORA";
         }
 
         int chooseProfessionalCard(Player pl){
             if(pl.hand.size()==1) return 0;
-            int best=0, bestVal=Integer.MAX_VALUE;
+            ArrayList<Integer> order=new ArrayList<>();
+            for(int i=0;i<pl.hand.size();i++) order.add(i);
+            final boolean aggressive=aiStyle==1, bluffer=aiStyle==3;
+
+            // Agressiva: tenta ganhar a primeira vaza e pressiona com cartas fortes.
+            // Estrategista: economiza força e joga a menor carta que resolve a vaza.
+            // Blefadora: mistura jogadas médias/fortes para esconder a qualidade da mão.
+            if(trick.size()==0){
+                if(aggressive){
+                    int best=0; for(int i=1;i<pl.hand.size();i++) if(strength(pl.hand.get(i))>strength(pl.hand.get(best))) best=i;
+                    return best;
+                }
+                if(bluffer && pl.hand.size()==3 && rnd.nextInt(100)<55){
+                    return 1;
+                }
+            }
+
+            int tableBest=-1;
+            for(Played x:trick) tableBest=Math.max(tableBest,strength(x.card));
+            int best=0; int bestCost=Integer.MAX_VALUE;
             for(int i=0;i<pl.hand.size();i++){
-                Card c=pl.hand.get(i); int v=strength(c);
-                boolean saveManilha=manilha(c) && pl.hand.size()>1;
-                int cost=v + (saveManilha?25:0);
-                if(trick.size()>0 && teammateWinning(pl) && v<60) cost-=18;
-                if(trick.size()==0 && v>=100) cost+=12;
-                if(cost<bestVal){bestVal=cost;best=i;}
+                Card c=pl.hand.get(i); int st=strength(c);
+                if(tableBest>=0 && st>tableBest){
+                    // Usa a menor carta capaz de ganhar.
+                    int cost=st + (aggressive?-12:0);
+                    if(cost<bestCost){bestCost=cost;best=i;}
+                }
+            }
+            if(bestCost<Integer.MAX_VALUE) return best;
+
+            for(int i=0;i<pl.hand.size();i++){
+                Card c=pl.hand.get(i);
+                int cost=strength(c);
+                if(manilha(c) && pl.hand.size()>1 && !aggressive) cost+=28;
+                if(teammateWinning(pl) && strength(c)<60) cost-=22;
+                if(bluffer && pl.hand.size()==3 && i==1) cost-=12;
+                if(cost<bestCost){bestCost=cost;best=i;}
             }
             return best;
         }
@@ -314,7 +347,9 @@ public class MainActivity extends Activity {
 
         String rivalSignal(Player pl){
             int chance=difficulty==1?20:difficulty==2?32:45;
-            if(rnd.nextInt(100)<chance)
+            if(aiStyle==1) chance+=8;
+            if(aiStyle==3) chance+=22;
+            if(rnd.nextInt(100)<Math.min(75,chance))
                 return new String[]{"😉","😙","😬","👄"}[rnd.nextInt(4)];
             return "";
         }
@@ -380,6 +415,9 @@ public class MainActivity extends Activity {
             int own=decider.teamA?teamAPoints:teamBPoints;
             int opp=decider.teamA?teamBPoints:teamAPoints;
             int threshold= difficulty==1?58:difficulty==2?48:40;
+            if(aiStyle==1) threshold-=10;
+            if(aiStyle==2) threshold+=4;
+            if(aiStyle==3) threshold-=6;
             if(mode.equals("MINEIRO")) threshold-=4;
 
             if(score>=threshold) return true;
@@ -388,6 +426,8 @@ public class MainActivity extends Activity {
 
             // Blefe/coragem aumenta conforme a dificuldade e o valor em jogo.
             int bluff=difficulty==1?8:difficulty==2?18:30;
+            if(aiStyle==1) bluff-=4;
+            if(aiStyle==3) bluff+=22;
             if(stake>=6) bluff+=8;
             if(winProbability(decider)>=70) return true;
             return rnd.nextInt(100)<bluff;
@@ -422,9 +462,13 @@ public class MainActivity extends Activity {
             int own=pl.teamA?teamAPoints:teamBPoints;
             int opp=pl.teamA?teamBPoints:teamAPoints;
             int chance=difficulty==1?7:difficulty==2?16:28;
+            if(aiStyle==1) chance+=16;
+            if(aiStyle==3) chance+=24;
             boolean strong=score>=48 || winProbability(pl)>=72;
             boolean pressure=own<opp && opp>=7;
             boolean bluff=score>=30 && rnd.nextInt(100)<chance;
+            if(aiStyle==3 && score>=28 && rnd.nextInt(100)<38) bluff=true;
+            if(aiStyle==2 && score<45) bluff=false;
             if(opp-own>=5) chance+=8;
             if(stake<12 && (strong || pressure || bluff)){
                 int next=stake==1?3:stake==3?6:stake==6?9:12;
@@ -545,11 +589,17 @@ public class MainActivity extends Activity {
             bg(c);float w=getWidth(),h=getHeight();
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(28);c.drawText("CONFIGURAÇÕES",w/2,65,p);
             p.setTextSize(15);p.setColor(Color.LTGRAY);c.drawText("Dificuldade da IA",w/2,110,p);
-            p.setTextSize(15);p.setColor(Color.LTGRAY);c.drawText("Modo de jogo",w/2,365,p);
+            p.setTextSize(15);p.setColor(Color.LTGRAY);c.drawText("Estilo da IA Mestre",w/2,365,p);
             easyRect.set(28,145,w-28,198);normalRect.set(28,215,w-28,268);hardRect.set(28,285,w-28,338);
             button(c,easyRect,"FÁCIL",difficulty==1?Color.rgb(35,145,78):Color.rgb(42,50,58),16);
             button(c,normalRect,"NORMAL",difficulty==2?Color.rgb(35,145,78):Color.rgb(42,50,58),16);
             button(c,hardRect,"DIFÍCIL",difficulty==3?Color.rgb(35,145,78):Color.rgb(42,50,58),16);
+            aggressiveRect.set(28,375,w-28,425); strategistRect.set(28,435,w-28,485); blufferRect.set(28,495,w-28,545);
+            button(c,aggressiveRect,"⚡ AGRESSIVA",aiStyle==1?Color.rgb(175,55,45):Color.rgb(42,50,58),15);
+            button(c,strategistRect,"🧠 ESTRATEGISTA",aiStyle==2?Color.rgb(35,145,78):Color.rgb(42,50,58),15);
+            button(c,blufferRect,"🎭 BLEFADORA",aiStyle==3?Color.rgb(145,75,160):Color.rgb(42,50,58),15);
+            p.setTextSize(12); p.setColor(Color.LTGRAY);
+            c.drawText("Atual: "+aiStyleName(),w/2,570,p);
             backRect.set(w/2-100,h-75,w/2+100,h-20);
             button(c,backRect,"VOLTAR",Color.rgb(42,50,58),17);
         }
@@ -590,6 +640,8 @@ public class MainActivity extends Activity {
 
             p.setTextSize(13);
             c.drawText("MÃO "+round+"   •   VALE "+stake+"   •   VAZAS "+tricksA+" × "+tricksB,w/2,151,p);
+            p.setTextSize(11); p.setColor(Color.rgb(255,235,150));
+            c.drawText("IA MESTRE: "+aiStyleName(),w/2,173,p);
 
             // VIRA: área fixa e bem destacada, separada da mesa.
             float vx=w/2-55, vy=205, vw=110, vh=145;
@@ -821,6 +873,9 @@ public class MainActivity extends Activity {
                 if(easyRect.contains(x,y)){difficulty=1;invalidate();return true;}
                 if(normalRect.contains(x,y)){difficulty=2;invalidate();return true;}
                 if(hardRect.contains(x,y)){difficulty=3;invalidate();return true;}
+                if(aggressiveRect.contains(x,y)){aiStyle=1;invalidate();return true;}
+                if(strategistRect.contains(x,y)){aiStyle=2;invalidate();return true;}
+                if(blufferRect.contains(x,y)){aiStyle=3;invalidate();return true;}
                 if(paulistaRect.contains(x,y)){mode="PAULISTA";invalidate();return true;}
                 if(mineiroRect.contains(x,y)){mode="MINEIRO";invalidate();return true;}
                 if(backRect.contains(x,y)){screen=0;invalidate();return true;}

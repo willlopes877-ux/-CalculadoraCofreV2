@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
         RectF play11Rect=new RectF(), run11Rect=new RectF(); RectF acceptRect=new RectF(), foldRect=new RectF(), raiseRect=new RectF(), coverRect=new RectF();
         RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF(), menuGameRect=new RectF(), menuBackGameRect=new RectF(), restartGameRect=new RectF();
         RectF easyRect=new RectF(), normalRect=new RectF(), hardRect=new RectF();
-        int difficulty=2;
+        int difficulty=2; String mode="PAULISTA"; RectF paulistaRect=new RectF(), mineiroRect=new RectF();
 
         TrucoView(Context c){
             super(c);
@@ -73,21 +73,25 @@ public class MainActivity extends Activity {
 
         void newHand(int first){
             deck.clear(); trick.clear(); trickWinners.clear(); seenCards.clear();
-            stake=1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; pendingRaise=false; proposedStake=0;
+            stake=mode.equals("MINEIRO")?2:1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; pendingRaise=false; proposedStake=0;
             for(Player pl:players) pl.hand.clear();
             buildDeck(); Collections.shuffle(deck,rnd);
             for(int i=0;i<3;i++) for(Player pl:players) pl.hand.add(deck.remove(0));
             vira=deck.remove(0); seenCards.add(vira); current=first;
-            if(teamAPoints==11 && teamBPoints==11){
+            if(mode.equals("MINEIRO") && teamAPoints==10 && teamBPoints==10){
+                stake=2;
+                status="⚔️ MÃO DE FERRO — valendo 2!";
+                invalidate();
+            } else if(mode.equals("PAULISTA") && teamAPoints==11 && teamBPoints==11){
                 stake=1;
                 status="⚔️ MÃO DE FERRO — valendo 1!";
                 invalidate();
-            } else if(teamAPoints==11){
+            } else if((mode.equals("PAULISTA") && teamAPoints==11) || (mode.equals("MINEIRO") && teamAPoints==10)){
                 elevenDecision=true;
-                status="MÃO DE 11 — sua dupla pode ver as cartas e decidir."; 
+                status=mode.equals("PAULISTA")?"MÃO DE 11 — sua dupla pode ver as cartas e decidir.":"MÃO DE 10 — sua dupla pode ver as cartas e decidir."; 
                 invalidate(); return;
             }
-            if(teamBPoints==11 && teamAPoints<11){
+            if(((mode.equals("PAULISTA") && teamBPoints==11) || (mode.equals("MINEIRO") && teamBPoints==10)) && teamAPoints<teamBPoints){
                 // Os rivais decidem automaticamente com base nas cartas.
                 if(aiAcceptTruco()){
                     stake=3;
@@ -121,10 +125,39 @@ public class MainActivity extends Activity {
         }
 
         int strength(Card c){
+            if(mode.equals("MINEIRO")){
+                if(c.rank.equals("4") && c.suit.equals("♣")) return 104;
+                if(c.rank.equals("7") && c.suit.equals("♥")) return 103;
+                if(c.rank.equals("A") && c.suit.equals("♠")) return 102;
+                if(c.rank.equals("7") && c.suit.equals("♦")) return 101;
+            }
             return c.rank.equals(nextRank(vira.rank)) ? 100+suitPower(c.suit) : c.value;
         }
 
-        boolean manilha(Card c){ return c.rank.equals(nextRank(vira.rank)); }
+        boolean manilha(Card c){
+            if(mode.equals("MINEIRO")) return (c.rank.equals("4")&&c.suit.equals("♣")) || (c.rank.equals("7")&&c.suit.equals("♥")) || (c.rank.equals("A")&&c.suit.equals("♠")) || (c.rank.equals("7")&&c.suit.equals("♦"));
+            return c.rank.equals(nextRank(vira.rank));
+        }
+
+        int publicCardsOfStrengthAtLeast(int min){
+            int n=0;
+            for(Card c:seenCards) if(strength(c)>=min) n++;
+            return n;
+        }
+
+        int winProbability(Player pl){
+            if(pl.hand.isEmpty()) return 0;
+            int strong=0;
+            for(Card c:pl.hand) if(strength(c)>=8) strong++;
+            int max=0;
+            for(Card c:pl.hand) max=Math.max(max,strength(c));
+            int score=handScore(pl);
+            int p=25 + strong*18 + Math.min(30,max>=100?30:max*2);
+            if(score>=70) p+=10;
+            if(teammateWinning(pl)) p+=12;
+            if(trick.size()==0 && max>=100) p+=10;
+            return Math.min(97,p);
+        }
 
         int handScore(Player pl){
             int total=0, man=0;
@@ -313,20 +346,22 @@ public class MainActivity extends Activity {
             int own=decider.teamA?teamAPoints:teamBPoints;
             int opp=decider.teamA?teamBPoints:teamAPoints;
             int threshold= difficulty==1?58:difficulty==2?48:40;
+            if(mode.equals("MINEIRO")) threshold-=4;
 
             if(score>=threshold) return true;
-            if(own>=10 && score<38) return false;
+            if((mode.equals("PAULISTA") && own>=10 && score<38) || (mode.equals("MINEIRO") && own>=10 && score<40)) return false;
             if(opp>=10 && score>=34) return true;
 
             // Blefe/coragem aumenta conforme a dificuldade e o valor em jogo.
             int bluff=difficulty==1?8:difficulty==2?18:30;
             if(stake>=6) bluff+=8;
+            if(winProbability(decider)>=70) return true;
             return rnd.nextInt(100)<bluff;
         }
 
         void askTruco(){
-            if(finished||waiting||elevenDecision||pendingRaise||current!=0||teamAPoints==11||teamBPoints==11) return;
-            int next=stake==1?3:stake==3?6:stake==6?9:12;
+            if(finished||waiting||elevenDecision||pendingRaise||current!=0||((mode.equals("PAULISTA")&&(teamAPoints==11||teamBPoints==11))||(mode.equals("MINEIRO")&&(teamAPoints==10||teamBPoints==10)))) return;
+            int next=mode.equals("MINEIRO")?(stake==2?4:stake==4?6:stake==6?10:12):(stake==1?3:stake==3?6:stake==6?9:12);
             if(stake>=12){status="Já vale 12!";invalidate();return;}
             pendingRaise=true; raiseByTeamA=true; proposedStake=next;
             status="🔥 VOCÊ PEDIU "+(next==3?"TRUCO":next==6?"SEIS":next==9?"NOVE":"DOZE")+"!";
@@ -353,13 +388,15 @@ public class MainActivity extends Activity {
             int own=pl.teamA?teamAPoints:teamBPoints;
             int opp=pl.teamA?teamBPoints:teamAPoints;
             int chance=difficulty==1?7:difficulty==2?16:28;
-            boolean strong=score>=48;
+            boolean strong=score>=48 || winProbability(pl)>=72;
             boolean pressure=own<opp && opp>=7;
             boolean bluff=score>=30 && rnd.nextInt(100)<chance;
+            if(opp-own>=5) chance+=8;
             if(stake<12 && (strong || pressure || bluff)){
                 int next=stake==1?3:stake==3?6:stake==6?9:12;
                 // Em ponto de partida, só sobe muito com mão realmente forte.
                 if(next>=9 && score<55 && own>=9) return;
+                if(mode.equals("MINEIRO") && next>=10 && winProbability(pl)<82) return;
                 pendingRaise=true; raiseByTeamA=false; proposedStake=next;
                 status=pl.name+" pediu "+(next==3?"TRUCO":next==6?"SEIS":next==9?"NOVE":"DOZE")+"!";
                 invalidate();
@@ -392,16 +429,16 @@ public class MainActivity extends Activity {
         }
 
         void play11(){
-            elevenDecision=false; stake=3;
-            status="🔥 VAMOS! Mão de 11 valendo 3.";
+            elevenDecision=false; stake=mode.equals("MINEIRO")?4:3;
+            status=mode.equals("MINEIRO")?"🔥 VAMOS! Mão de 10 valendo 4.":"🔥 VAMOS! Mão de 11 valendo 3.";
             invalidate();
             if(current!=0) runAITurn();
         }
 
         void run11(){
             elevenDecision=false;
-            teamBPoints++;
-            status="🏃 CORRE! Rivais ganham 1 ponto.";
+            teamBPoints += mode.equals("MINEIRO")?2:1;
+            status=mode.equals("MINEIRO")?"🏃 CORRE! Rivais ganham 2 pontos.":"🏃 CORRE! Rivais ganham 1 ponto.";
             if(teamBPoints>=12){finished=true;invalidate();return;}
             round++;
             dealer=(dealer+1)%4;
@@ -438,12 +475,12 @@ public class MainActivity extends Activity {
             playRect.set(w/2-190,250,w/2+190,330);
             howRect.set(w/2-145,350,w/2+145,405);
             settingsRect.set(w/2-145,423,w/2+145,478);
-            button(c,playRect,"JOGAR",Color.rgb(35,145,78),26);
+            button(c,playRect,"JOGAR "+mode,Color.rgb(35,145,78),26);
             button(c,howRect,"COMO JOGAR",Color.rgb(42,50,58),17);
             button(c,settingsRect,"CONFIGURAÇÕES",Color.rgb(42,50,58),17);
 
             p.setColor(Color.rgb(130,140,145));p.setTextSize(12);
-            c.drawText("V2 • TRUCO PAULISTA • 2x2",w/2,h-35,p);
+            c.drawText("V2 • TRUCO "+mode+" • 2x2 • IA ESTRATÉGICA",w/2,h-35,p);
         }
 
         void drawHowTo(Canvas c){
@@ -451,18 +488,21 @@ public class MainActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(28);c.drawText("COMO JOGAR",w/2,65,p);
             p.setTextAlign(Paint.Align.LEFT);p.setTextSize(15);p.setColor(Color.LTGRAY);
             String[] lines={
-                "• Truco Paulista: 40 cartas, sem 8, 9 e 10.",
-                "• 3 cartas por jogador; a VIRA define a manilha.",
-                "• Força: manilhas > 3 > 2 > A > K > J > Q > 7 > 6 > 5 > 4.",
-                "• Manilhas: ♣ Zap > ♥ > ♠ > ♦.",
-                "• Melhor de 3 vazas; empate segue a regra da vaza anterior.",
-                "• Valor: 1 → 3 → 6 → 9 → 12. Pode aceitar, correr ou aumentar.",
-                "• Mão de 11 vale 3 se jogar e não permite Truco.",
-                "• 11×11 é Mão de Ferro: vale 1 e decide a partida.",
-                "• A carta coberta não pode ser usada na primeira vaza."
+                "• PAULISTA: 40 cartas, sem 8, 9 e 10; a VIRA define as manilhas.",
+                "• PAULISTA: manilhas = carta seguinte à VIRA; ♣ > ♥ > ♠ > ♦.",
+                "• PAULISTA: 1 → 3 → 6 → 9 → 12; Mão de 11 vale 3.",
+                "• MINEIRO: manilhas fixas = 4♣ > 7♥ > A♠ > 7♦; não usa VIRA.",
+                "• MINEIRO: mão começa em 2; pedidos tradicionais 4 → 6 → 10 → 12.",
+                "• MINEIRO: Mão de 10 vale 4; Mão de Ferro é decisiva.",
+                "• Ambos: 3 cartas, melhor de 3 vazas e partida até 12 pontos.",
+                "• A IA conta cartas públicas, força a mesa, posição, placar e blefe.",
+                "• Empates são tratados pela ordem das vazas e pela regra da variante."
             };
             float y=125;
             for(String s:lines){c.drawText(s,28,y,p);y+=43;}
+            paulistaRect.set(28,395,w/2-8,448); mineiroRect.set(w/2+8,395,w-28,448);
+            button(c,paulistaRect,"PAULISTA",mode.equals("PAULISTA")?Color.rgb(35,145,78):Color.rgb(42,50,58),15);
+            button(c,mineiroRect,"MINEIRO",mode.equals("MINEIRO")?Color.rgb(35,145,78):Color.rgb(42,50,58),15);
             backRect.set(w/2-100,h-75,w/2+100,h-20);
             button(c,backRect,"VOLTAR",Color.rgb(42,50,58),17);
         }
@@ -471,6 +511,7 @@ public class MainActivity extends Activity {
             bg(c);float w=getWidth(),h=getHeight();
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(28);c.drawText("CONFIGURAÇÕES",w/2,65,p);
             p.setTextSize(15);p.setColor(Color.LTGRAY);c.drawText("Dificuldade da IA",w/2,110,p);
+            p.setTextSize(15);p.setColor(Color.LTGRAY);c.drawText("Modo de jogo",w/2,365,p);
             easyRect.set(28,145,w-28,198);normalRect.set(28,215,w-28,268);hardRect.set(28,285,w-28,338);
             button(c,easyRect,"FÁCIL",difficulty==1?Color.rgb(35,145,78):Color.rgb(42,50,58),16);
             button(c,normalRect,"NORMAL",difficulty==2?Color.rgb(35,145,78):Color.rgb(42,50,58),16);
@@ -497,7 +538,7 @@ public class MainActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);
             p.setTextSize(27);
-            c.drawText("TRUCO PAULISTA",w/2,32,p);
+            c.drawText("TRUCO "+mode,w/2,32,p);
 
             // Placar grande.
             p.setTextSize(28);
@@ -531,7 +572,7 @@ public class MainActivity extends Activity {
             p.setColor(Color.rgb(255,235,150));
             p.setTextSize(16);
             c.drawText("VIRA",w/2,197,p);
-            if(vira!=null){
+            if(vira!=null && mode.equals("PAULISTA")){
                 p.setTextSize(48);
                 int vc=(vira.suit.equals("♥")||vira.suit.equals("♦"))?Color.rgb(255,90,100):Color.WHITE;
                 p.setColor(vc);
@@ -565,7 +606,7 @@ public class MainActivity extends Activity {
             // Botão TRUCO fica no lado direito, separado das cartas da mão.
             trucoRect.set(w-125,h-165,w-15,h-101);
             button(c,trucoRect,"TRUCO!",Color.rgb(190,45,45),18);
-            if(trickNo>1 && current==0 && !pendingRaise){
+            if(mode.equals("PAULISTA") && trickNo>1 && current==0 && !pendingRaise){
                 coverRect.set(w/2-95,h-225,w/2+95,h-165);
                 button(c,coverRect,"COBERTA",Color.rgb(70,80,90),15);
             }
@@ -746,6 +787,8 @@ public class MainActivity extends Activity {
                 if(easyRect.contains(x,y)){difficulty=1;invalidate();return true;}
                 if(normalRect.contains(x,y)){difficulty=2;invalidate();return true;}
                 if(hardRect.contains(x,y)){difficulty=3;invalidate();return true;}
+                if(paulistaRect.contains(x,y)){mode="PAULISTA";invalidate();return true;}
+                if(mineiroRect.contains(x,y)){mode="MINEIRO";invalidate();return true;}
                 if(backRect.contains(x,y)){screen=0;invalidate();return true;}
                 return true;
             }

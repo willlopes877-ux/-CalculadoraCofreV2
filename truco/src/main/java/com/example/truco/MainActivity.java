@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
         ArrayList<Card> deck=new ArrayList<>();
         ArrayList<Played> trick=new ArrayList<>();
         ArrayList<Integer> trickWinners=new ArrayList<>();
+        ArrayList<Card> seenCards=new ArrayList<>();
         Player[] players=new Player[4];
         Card vira;
 
@@ -71,12 +72,12 @@ public class MainActivity extends Activity {
         }
 
         void newHand(int first){
-            deck.clear(); trick.clear(); trickWinners.clear();
+            deck.clear(); trick.clear(); trickWinners.clear(); seenCards.clear();
             stake=1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; pendingRaise=false; proposedStake=0;
             for(Player pl:players) pl.hand.clear();
             buildDeck(); Collections.shuffle(deck,rnd);
             for(int i=0;i<3;i++) for(Player pl:players) pl.hand.add(deck.remove(0));
-            vira=deck.remove(0); current=first;
+            vira=deck.remove(0); seenCards.add(vira); current=first;
             if(teamAPoints==11 && teamBPoints==11){
                 stake=1;
                 status="⚔️ MÃO DE FERRO — valendo 1!";
@@ -125,6 +126,28 @@ public class MainActivity extends Activity {
 
         boolean manilha(Card c){ return c.rank.equals(nextRank(vira.rank)); }
 
+        int handScore(Player pl){
+            int total=0, man=0;
+            for(Card c:pl.hand){
+                int st=strength(c); total+=st;
+                if(manilha(c)) man++;
+            }
+            int score=pl.hand.isEmpty()?0:(total/pl.hand.size());
+            if(man==1) score+=35;
+            if(man>=2) score+=55;
+            return score;
+        }
+
+        boolean teammateWinning(Player pl){
+            if(trick.isEmpty()) return false;
+            int best=-1, winner=-1;
+            for(Played x:trick){
+                int st=strength(x.card);
+                if(st>best){best=st;winner=x.player;}
+            }
+            return winner>=0 && players[winner].teamA==pl.teamA && players[winner]!=pl;
+        }
+
         Card chooseAI(Player pl){
             ArrayList<Card> sorted=new ArrayList<>(pl.hand);
             Collections.sort(sorted,(a,b)->Integer.compare(strength(a),strength(b)));
@@ -132,41 +155,51 @@ public class MainActivity extends Activity {
 
             int own=pl.teamA?teamAPoints:teamBPoints;
             int opp=pl.teamA?teamBPoints:teamAPoints;
-            int strong=0, man=0;
-            for(Card c:pl.hand){
-                if(strength(c)>=8) strong++;
-                if(manilha(c)) man++;
+            int score=handScore(pl);
+            boolean desperate=own<=3 && opp>=8;
+            boolean matchPoint=own>=10;
+            int bluffChance=difficulty==1?10:difficulty==2?22:35;
+            int preserve=difficulty==1?35:difficulty==2?60:82;
+
+            // IA profissional: não desperdiça carta alta quando o parceiro já está ganhando.
+            if(teammateWinning(pl) && rnd.nextInt(100)<preserve){
+                return sorted.get(0);
             }
 
-            int bluffChance=difficulty==1?18:difficulty==2?28:38;
-            int saveChance=difficulty==1?35:difficulty==2?55:72;
-
-            // IA estratégica: considera placar, força da mão, vaza atual e preservação de cartas.
-            if(own+opp>=9 && own<opp) pl.mood=Math.min(100,pl.mood+10);
-            if(own>opp+3) pl.mood=Math.max(0,pl.mood-5);
-
-            if(man>0 && (stake==1 || pl.mood>68)) return sorted.get(sorted.size()-1);
-            if(strong>=2 && stake==1 && rnd.nextInt(100)<saveChance)
-                return sorted.get(sorted.size()-1);
-            if(strong==1 && sorted.size()==3 && rnd.nextInt(100)<bluffChance)
-                return sorted.get(1);
-
-            // Se já há carta forte na mesa, tenta responder com o mínimo necessário.
             int tableBest=-1;
             for(Played x:trick) tableBest=Math.max(tableBest,strength(x.card));
+
+            // Quando precisa ganhar a vaza, usa a menor carta que ainda vence.
             if(tableBest>=0){
-                for(Card c:sorted) if(strength(c)>tableBest) return c;
+                for(Card c:sorted){
+                    if(strength(c)>tableBest) return c;
+                }
+                return sorted.get(0);
             }
 
-            // Guarda a melhor carta quando não precisa gastá-la.
-            if(sorted.size()==3 && rnd.nextInt(100)<saveChance/2) return sorted.get(0);
-            return sorted.get(rnd.nextInt(sorted.size()));
+            // Primeira carta da vaza: abre com média quando pode esconder força.
+            boolean hasMan= false;
+            for(Card c:pl.hand) if(manilha(c)) hasMan=true;
+            if(hasMan && (stake>=6 || matchPoint || desperate)) return sorted.get(sorted.size()-1);
+
+            if(score>=45 && sorted.size()==3 && rnd.nextInt(100)<preserve)
+                return sorted.get(1);
+
+            // Blefe controlado: carta média quando a mão permite representar força.
+            if(sorted.size()==3 && rnd.nextInt(100)<bluffChance)
+                return sorted.get(1);
+
+            // Se o risco está alto, preserva a melhor carta para a segunda/terceira vaza.
+            if(stake>=6 && !matchPoint && sorted.size()>1)
+                return sorted.get(0);
+
+            return sorted.get(0);
         }
 
         void playHuman(int idx){
             if(finished||waiting||elevenDecision||pendingRaise||current!=0||idx<0||idx>=players[0].hand.size()) return;
             Card c=players[0].hand.remove(idx);
-            trick.add(new Played(0,c));
+            trick.add(new Played(0,c)); seenCards.add(c);
             status="Você jogou "+c.label()+" — carta na mesa!";
             invalidate();
             postDelayed(this::advanceTurn,220);
@@ -193,7 +226,7 @@ public class MainActivity extends Activity {
                 Card c=chooseAI(pl);
                 if(c==null) return;
                 pl.hand.remove(c);
-                trick.add(new Played(current,c));
+                trick.add(new Played(current,c)); seenCards.add(c);
                 String sig=current==1?partnerSignal(pl):rivalSignal(pl);
                 status=sig.length()>0?pl.name+" fez o sinal "+sig:pl.name+" jogou "+c.label()+".";
                 invalidate();
@@ -273,18 +306,22 @@ public class MainActivity extends Activity {
         }
 
         boolean aiAcceptTruco(){
-            int top=0,strong=0,man=0;
-            for(Player pl:players){
-                if(pl.teamA) continue;
-                for(Card c:pl.hand){
-                    top=Math.max(top,strength(c));
-                    if(strength(c)>=8) strong++;
-                    if(manilha(c)) man++;
-                }
-            }
-            int chance=difficulty==1?20:difficulty==2?32:48;
-            if(man>0||strong>=2||top>=9) return true;
-            return rnd.nextInt(100)<(chance+(stake>=6?10:0));
+            // A decisão usa somente informação pública + a própria mão do decisor.
+            // A IA não consulta as cartas do adversário.
+            Player decider=(current>=0 && current<4 && !players[current].human)?players[current]:players[2];
+            int score=handScore(decider);
+            int own=decider.teamA?teamAPoints:teamBPoints;
+            int opp=decider.teamA?teamBPoints:teamAPoints;
+            int threshold= difficulty==1?58:difficulty==2?48:40;
+
+            if(score>=threshold) return true;
+            if(own>=10 && score<38) return false;
+            if(opp>=10 && score>=34) return true;
+
+            // Blefe/coragem aumenta conforme a dificuldade e o valor em jogo.
+            int bluff=difficulty==1?8:difficulty==2?18:30;
+            if(stake>=6) bluff+=8;
+            return rnd.nextInt(100)<bluff;
         }
 
         void askTruco(){
@@ -312,10 +349,17 @@ public class MainActivity extends Activity {
         void aiCallRaiseIfStrong(){
             if(finished||waiting||elevenDecision||pendingRaise||teamAPoints==11||teamBPoints==11||trick.size()>0) return;
             Player pl=players[current]; if(pl.human) return;
-            int best=0,man=0; for(Card c:pl.hand){best=Math.max(best,strength(c));if(manilha(c))man++;}
-            int chance=difficulty==1?6:difficulty==2?14:22;
-            if((man>0||best>=9)&&rnd.nextInt(100)<chance&&stake<12){
+            int score=handScore(pl);
+            int own=pl.teamA?teamAPoints:teamBPoints;
+            int opp=pl.teamA?teamBPoints:teamAPoints;
+            int chance=difficulty==1?7:difficulty==2?16:28;
+            boolean strong=score>=48;
+            boolean pressure=own<opp && opp>=7;
+            boolean bluff=score>=30 && rnd.nextInt(100)<chance;
+            if(stake<12 && (strong || pressure || bluff)){
                 int next=stake==1?3:stake==3?6:stake==6?9:12;
+                // Em ponto de partida, só sobe muito com mão realmente forte.
+                if(next>=9 && score<55 && own>=9) return;
                 pendingRaise=true; raiseByTeamA=false; proposedStake=next;
                 status=pl.name+" pediu "+(next==3?"TRUCO":next==6?"SEIS":next==9?"NOVE":"DOZE")+"!";
                 invalidate();

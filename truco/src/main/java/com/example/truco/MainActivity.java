@@ -27,8 +27,9 @@ public class MainActivity extends Activity {
     }
 
     static class Played {
-        int player; Card card;
-        Played(int p, Card c){player=p;card=c;}
+        int player; Card card; boolean covered;
+        Played(int p, Card c){this(p,c,false);}
+        Played(int p, Card c, boolean covered){player=p;card=c;this.covered=covered;}
     }
 
     static class TrucoView extends View {
@@ -42,7 +43,7 @@ public class MainActivity extends Activity {
         Card vira;
 
         int teamAPoints=0, teamBPoints=0, stake=1, current=0, round=1, tricksA=0, tricksB=0, dealer=3, trickNo=1;
-        boolean finished=false, waiting=false, elevenDecision=false, pendingRaise=false; boolean raiseByTeamA=false; int proposedStake=0;
+        boolean finished=false, waiting=false, elevenDecision=false, pendingRaise=false, showPartnerHand=false; boolean raiseByTeamA=false; int proposedStake=0;
         int screen=0; // 0 menu, 1 match, 2 how-to, 3 settings
         String status="Sua vez — escolha uma carta";
         RectF[] cardRects=new RectF[3];
@@ -77,7 +78,7 @@ public class MainActivity extends Activity {
         void newHand(int first){
             deck.clear();
             trickHistory.clear(); opponentAggression=0; opponentFoldsToRaise=0; opponentSuccessfulBluffs=0; trick.clear(); trickWinners.clear(); seenCards.clear();
-            stake=mode.equals("MINEIRO")?2:1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; pendingRaise=false; proposedStake=0;
+            stake=mode.equals("MINEIRO")?2:1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; showPartnerHand=false; pendingRaise=false; proposedStake=0;
             for(Player pl:players) pl.hand.clear();
             buildDeck(); Collections.shuffle(deck,rnd);
             for(int i=0;i<3;i++) for(Player pl:players) pl.hand.add(deck.remove(0));
@@ -91,8 +92,8 @@ public class MainActivity extends Activity {
                 status="⚔️ MÃO DE FERRO — valendo 1!";
                 invalidate();
             } else if((mode.equals("PAULISTA") && teamAPoints==11) || (mode.equals("MINEIRO") && teamAPoints==10)){
-                elevenDecision=true;
-                status=mode.equals("PAULISTA")?"MÃO DE 11 — sua dupla pode ver as cartas e decidir.":"MÃO DE 10 — sua dupla pode ver as cartas e decidir."; 
+                elevenDecision=true; showPartnerHand=true;
+                status=mode.equals("PAULISTA")?"MÃO DE 11 — veja as cartas da parceira e decida.":"MÃO DE 10 — veja as cartas da parceira e decida."; 
                 invalidate(); return;
             }
             if(((mode.equals("PAULISTA") && teamBPoints==11) || (mode.equals("MINEIRO") && teamBPoints==10)) && teamAPoints<teamBPoints){
@@ -184,45 +185,77 @@ public class MainActivity extends Activity {
 
         int chooseProfessionalCard(Player pl){
             if(pl.hand.size()==1) return 0;
-            ArrayList<Integer> order=new ArrayList<>();
-            for(int i=0;i<pl.hand.size();i++) order.add(i);
             final boolean aggressive=aiStyle==1, bluffer=aiStyle==3;
 
-            // Agressiva: tenta ganhar a primeira vaza e pressiona com cartas fortes.
-            // Estrategista: economiza força e joga a menor carta que resolve a vaza.
-            // Blefadora: mistura jogadas médias/fortes para esconder a qualidade da mão.
-            if(trick.size()==0){
+            // IA Mestre: primeiro entende o estado da vaza.
+            int tableBest=-1;
+            int tableWinner=-1;
+            for(Played x:trick){
+                if(x.covered) continue;
+                int st=strength(x.card);
+                if(st>tableBest){tableBest=st;tableWinner=x.player;}
+            }
+
+            // Parceiro ganhando: não desperdiça manilha/carta alta sem necessidade.
+            if(tableWinner>=0 && players[tableWinner].teamA==pl.teamA && tableWinner!=current){
+                int low=0;
+                for(int i=1;i<pl.hand.size();i++)
+                    if(strength(pl.hand.get(i))<strength(pl.hand.get(low))) low=i;
+                if(!aggressive || rnd.nextInt(100)<82) return low;
+            }
+
+            // Se precisa ganhar, usa a menor carta que realmente mata a mesa.
+            if(tableBest>=0){
+                int best=-1, bestStrength=Integer.MAX_VALUE;
+                for(int i=0;i<pl.hand.size();i++){
+                    int st=strength(pl.hand.get(i));
+                    if(st>tableBest && st<bestStrength){
+                        bestStrength=st; best=i;
+                    }
+                }
+                if(best>=0) return best;
+            }
+
+            // Abertura da vaza: cada personalidade joga de um jeito.
+            if(trick.isEmpty()){
                 if(aggressive){
-                    int best=0; for(int i=1;i<pl.hand.size();i++) if(strength(pl.hand.get(i))>strength(pl.hand.get(best))) best=i;
+                    int best=0;
+                    for(int i=1;i<pl.hand.size();i++)
+                        if(strength(pl.hand.get(i))>strength(pl.hand.get(best))) best=i;
                     return best;
                 }
-                if(bluffer && pl.hand.size()==3 && rnd.nextInt(100)<55){
-                    return 1;
+                if(bluffer && pl.hand.size()==3 && rnd.nextInt(100)<58){
+                    // Carta média para não denunciar uma mão forte.
+                    int mid=0;
+                    for(int i=1;i<pl.hand.size();i++)
+                        if(Math.abs(strength(pl.hand.get(i))-50)<Math.abs(strength(pl.hand.get(mid))-50)) mid=i;
+                    return mid;
                 }
             }
 
-            int tableBest=-1;
-            for(Played x:trick) tableBest=Math.max(tableBest,strength(x.card));
-            int best=0; int bestCost=Integer.MAX_VALUE;
-            for(int i=0;i<pl.hand.size();i++){
-                Card c=pl.hand.get(i); int st=strength(c);
-                if(tableBest>=0 && st>tableBest){
-                    // Usa a menor carta capaz de ganhar.
-                    int cost=st + (aggressive?-12:0);
-                    if(cost<bestCost){bestCost=cost;best=i;}
-                }
-            }
-            if(bestCost<Integer.MAX_VALUE) return best;
-
+            int best=0;
+            int bestCost=Integer.MAX_VALUE;
             for(int i=0;i<pl.hand.size();i++){
                 Card c=pl.hand.get(i);
                 int cost=strength(c);
-                if(manilha(c) && pl.hand.size()>1 && !aggressive) cost+=28;
-                if(teammateWinning(pl) && strength(c)<60) cost-=22;
-                if(bluffer && pl.hand.size()==3 && i==1) cost-=12;
+
+                // Guarda manilha quando não é necessário gastar.
+                if(manilha(c) && pl.hand.size()>1 && !aggressive) cost+=32;
+
+                // Em apostas altas, pensa no valor da próxima vaza.
+                if(stake>=6 && !aggressive && !matchPointFor(pl) && strength(c)>=60) cost+=18;
+
+                // Blefadora prefere cartas intermediárias para manter a leitura difícil.
+                if(bluffer && pl.hand.size()==3 && strength(c)>=20 && strength(c)<80) cost-=14;
+
                 if(cost<bestCost){bestCost=cost;best=i;}
             }
             return best;
+        }
+
+        boolean matchPointFor(Player pl){
+            int own=pl.teamA?teamAPoints:teamBPoints;
+            return mode.equals("PAULISTA")?own>=10:own>=9;
         }
 
         int handScore(Player pl){
@@ -252,46 +285,36 @@ public class MainActivity extends Activity {
             Collections.sort(sorted,(a,b)->Integer.compare(strength(a),strength(b)));
             if(sorted.isEmpty()) return null;
 
+            // No modo DIFÍCIL, a IA Mestre usa leitura de mesa + estilo escolhido.
+            if(difficulty>=3) return pl.hand.get(chooseProfessionalCard(pl));
+
             int own=pl.teamA?teamAPoints:teamBPoints;
             int opp=pl.teamA?teamBPoints:teamAPoints;
             int score=handScore(pl);
             boolean desperate=own<=3 && opp>=8;
             boolean matchPoint=own>=10;
-            int bluffChance=difficulty==1?10:difficulty==2?22:35;
-            int preserve=difficulty==1?35:difficulty==2?60:82;
+            int bluffChance=difficulty==1?8:18;
+            int preserve=difficulty==1?30:62;
 
-            // IA profissional: não desperdiça carta alta quando o parceiro já está ganhando.
-            if(teammateWinning(pl) && rnd.nextInt(100)<preserve){
-                return sorted.get(0);
-            }
+            // Se o parceiro já está ganhando, economiza a carta e evita "matar o parceiro".
+            if(teammateWinning(pl) && rnd.nextInt(100)<preserve) return sorted.get(0);
 
             int tableBest=-1;
-            for(Played x:trick) tableBest=Math.max(tableBest,strength(x.card));
+            for(Played x:trick) if(!x.covered) tableBest=Math.max(tableBest,strength(x.card));
 
-            // Quando precisa ganhar a vaza, usa a menor carta que ainda vence.
+            // Sempre tenta ganhar gastando a menor carta possível.
             if(tableBest>=0){
-                for(Card c:sorted){
-                    if(strength(c)>tableBest) return c;
-                }
+                for(Card c:sorted) if(strength(c)>tableBest) return c;
                 return sorted.get(0);
             }
 
-            // Primeira carta da vaza: abre com média quando pode esconder força.
-            boolean hasMan= false;
+            boolean hasMan=false;
             for(Card c:pl.hand) if(manilha(c)) hasMan=true;
             if(hasMan && (stake>=6 || matchPoint || desperate)) return sorted.get(sorted.size()-1);
 
-            if(score>=45 && sorted.size()==3 && rnd.nextInt(100)<preserve)
-                return sorted.get(1);
-
-            // Blefe controlado: carta média quando a mão permite representar força.
-            if(sorted.size()==3 && rnd.nextInt(100)<bluffChance)
-                return sorted.get(1);
-
-            // Se o risco está alto, preserva a melhor carta para a segunda/terceira vaza.
-            if(stake>=6 && !matchPoint && sorted.size()>1)
-                return sorted.get(0);
-
+            if(score>=45 && sorted.size()==3 && rnd.nextInt(100)<preserve) return sorted.get(1);
+            if(sorted.size()==3 && rnd.nextInt(100)<bluffChance) return sorted.get(1);
+            if(stake>=6 && !matchPoint && sorted.size()>1) return sorted.get(0);
             return sorted.get(0);
         }
 
@@ -358,37 +381,43 @@ public class MainActivity extends Activity {
             trickHistory.add("v"+trickNo+":"+trick.size()+"@"+stake);
             int best=-1,bestStrength=-1; boolean tie=false;
             for(Played x:trick){
+                if(x.covered) continue;
                 int st=strength(x.card);
                 if(st>bestStrength){bestStrength=st;best=x.player;tie=false;}
                 else if(st==bestStrength) tie=true;
             }
 
-            // Regras de empate do Truco Paulista:
-            // empate na 1a vaza: próxima vaza vale para decidir;
-            // empate depois de uma vaza ganha: vence quem ganhou a anterior.
             int winner;
             if(tie){
-                if(trickWinners.isEmpty()){
-                    winner=current; // empate na primeira: mão segue para a próxima
-                }else{
-                    winner=trickWinners.get(trickWinners.size()-1);
-                }
+                // Paulista: empate na 1ª leva a decisão para a 2ª;
+                // se já houve vencedor, a dupla que venceu a vaza anterior mantém a vantagem.
+                winner=trickWinners.isEmpty()? -1 : trickWinners.get(trickWinners.size()-1);
             }else{
                 winner=best;
             }
 
-            trickWinners.add(winner);
-            if(players[winner].teamA) tricksA++; else tricksB++;
-            status=(players[winner].teamA?"🤝 SUA DUPLA":"🤖 RIVAIS")+" ganharam a vaza!";
+            // Se a primeira vaza empatou, ela não dá ponto de vaza.
+            if(winner>=0){
+                trickWinners.add(winner);
+                if(players[winner].teamA) tricksA++; else tricksB++;
+                status=(players[winner].teamA?"🤝 SUA DUPLA":"🤖 RIVAIS")+" ganharam a vaza!";
+            }else{
+                trickWinners.add(-1);
+                status="⚔️ EMPATE! A próxima vaza decide.";
+            }
             invalidate();
 
             trick.clear();
             trickNo++;
             if(tricksA>=2||tricksB>=2){
-                postDelayed(()->endHand(players[winner].teamA),650);
+                boolean teamAWon=tricksA>=2;
+                postDelayed(()->endHand(teamAWon),650);
                 return;
             }
-            current=winner;
+
+            // Quem ganhou a vaza começa a próxima. Em empate na primeira,
+            // mantém-se a ordem original do primeiro jogador.
+            if(winner>=0) current=winner;
             postDelayed(()->{
                 if(current==0){status="Sua vez — próxima vaza.";invalidate();}
                 else runAITurn();
@@ -501,7 +530,7 @@ public class MainActivity extends Activity {
 
         void coverCard(){
             if(finished||waiting||elevenDecision||pendingRaise||current!=0||trickNo==1||players[0].hand.isEmpty())return;
-            Card c=players[0].hand.remove(0); trick.add(new Played(0,c));
+            Card c=players[0].hand.remove(0); trick.add(new Played(0,c,true)); seenCards.add(c);
             status="Você jogou uma carta COBERTA. Ela não pode ganhar a vaza."; invalidate();
             postDelayed(this::advanceTurn,220);
         }
@@ -742,7 +771,7 @@ public class MainActivity extends Activity {
                 // Sombra para destacar a carta sobre a mesa.
                 p.setColor(Color.argb(150,0,0,0));
                 c.drawRoundRect(left-4,top+5,left+cw+4,top+ch+7,14,14,p);
-                drawCard(c,x.card,left,top,cw,ch,true);
+                if(x.covered) drawCoveredCard(c,left,top,cw,ch); else drawCard(c,x.card,left,top,cw,ch,true);
             }
         }
 
@@ -803,15 +832,27 @@ public class MainActivity extends Activity {
         }
 
         void draw11(Canvas c,float w,float h){
-            p.setColor(Color.argb(245,7,13,10));c.drawRoundRect(15,h/2-100,w-15,h/2+105,22,22,p);
+            p.setColor(Color.argb(248,7,13,10));c.drawRoundRect(10,h/2-175,w-10,h/2+180,22,22,p);
             p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(22);
-            c.drawText("MÃO DE 11",w/2,h/2-57,p);
+            c.drawText(mode.equals("PAULISTA")?"MÃO DE 11":"MÃO DE 10",w/2,h/2-135,p);
+            p.setTextSize(12);p.setColor(Color.LTGRAY);
+            c.drawText("Sua dupla pode ver as cartas antes de decidir.",w/2,h/2-112,p);
+
+            if(showPartnerHand && !players[1].hand.isEmpty()){
+                p.setTextSize(11);p.setColor(Color.rgb(255,235,150));
+                c.drawText("CARTAS DA PARCEIRA",w/2,h/2-88,p);
+                float cw=72,ch=96,gap=58;
+                float sx=w/2f-(players[1].hand.size()-1)*gap/2f-cw/2f;
+                for(int i=0;i<players[1].hand.size();i++)
+                    drawCard(c,players[1].hand.get(i),sx+i*gap,h/2-78,cw,ch,true);
+            }
+
             p.setTextSize(13);p.setColor(Color.LTGRAY);
-            c.drawText("Sua dupla pode jogar valendo 3",w/2,h/2-30,p);
-            c.drawText("ou correr e entregar 1 ponto.",w/2,h/2-9,p);
-            play11Rect.set(w/2-145,h/2+20,w/2-10,h/2+68);
-            run11Rect.set(w/2+10,h/2+20,w/2+145,h/2+68);
-            button(c,play11Rect,"VAMOS! 3",Color.rgb(35,135,75),15);
+            c.drawText(mode.equals("PAULISTA")?"Jogar vale 3 pontos":"Jogar vale 4 pontos",w/2,h/2+34,p);
+            c.drawText(mode.equals("PAULISTA")?"Correr entrega 1 ponto":"Correr entrega 2 pontos",w/2,h/2+54,p);
+            play11Rect.set(w/2-145,h/2+72,w/2-10,h/2+122);
+            run11Rect.set(w/2+10,h/2+72,w/2+145,h/2+122);
+            button(c,play11Rect,mode.equals("PAULISTA")?"VAMOS! 3":"VAMOS! 4",Color.rgb(35,135,75),15);
             button(c,run11Rect,"CORRE",Color.rgb(150,45,45),15);
         }
 
@@ -826,6 +867,24 @@ public class MainActivity extends Activity {
             }
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(14);
             c.drawText("SUAS CARTAS  •  TOQUE PARA JOGAR",x,y+146,p);
+        }
+
+        void drawCoveredCard(Canvas c,float x,float y,float cw,float ch){
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(25,55,90));
+            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(220,235,250));
+            c.drawRoundRect(x+4,y+4,x+cw-4,y+ch-4,10,10,p);
+            p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setColor(Color.WHITE);
+            p.setTextSize(24);
+            c.drawText("🂠",x+cw/2,y+ch/2+8,p);
+            p.setTextSize(10);
+            p.setColor(Color.rgb(210,225,240));
+            c.drawText("COBERTA",x+cw/2,y+ch-12,p);
         }
 
         void drawCard(Canvas c,Card card,float x,float y,float cw,float ch,boolean table){
@@ -886,8 +945,8 @@ public class MainActivity extends Activity {
             if(menuGameRect.contains(x,y)||menuBackGameRect.contains(x,y)){screen=0;waiting=false;pendingRaise=false;elevenDecision=false;invalidate();return true;}
             if(restartGameRect.contains(x,y)){startMatch();return true;}
             if(elevenDecision){
-                if(play11Rect.contains(x,y))play11();
-                else if(run11Rect.contains(x,y))run11();
+                if(play11Rect.contains(x,y)){ showPartnerHand=false; play11(); }
+                else if(run11Rect.contains(x,y)){ showPartnerHand=false; run11(); }
                 return true;
             }
             if(pendingRaise && !raiseByTeamA){

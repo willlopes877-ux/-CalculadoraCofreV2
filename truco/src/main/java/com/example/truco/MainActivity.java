@@ -386,9 +386,10 @@ public class MainActivity extends Activity {
             bg(c);
             float w=getWidth(),h=getHeight();
             p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(Color.WHITE);p.setTextSize(44);c.drawText("TRUCO",w/2,145,p);
-            p.setColor(Color.rgb(45,185,105));p.setTextSize(22);c.drawText("ARENA IA",w/2,178,p);
-            p.setColor(Color.LTGRAY);p.setTextSize(14);c.drawText("TRUCO PAULISTA • estratégia • blefe",w/2,205,p);
+            p.setColor(Color.rgb(255,235,150));p.setTextSize(16);c.drawText("♠  ♥  TRUCO  ♦  ♣",w/2,92,p);
+            p.setColor(Color.WHITE);p.setTextSize(48);c.drawText("TRUCO",w/2,150,p);
+            p.setColor(Color.rgb(45,205,115));p.setTextSize(24);c.drawText("ARENA IA",w/2,183,p);
+            p.setColor(Color.LTGRAY);p.setTextSize(14);c.drawText("PAULISTA  •  2x2  •  ESTRATÉGIA E BLEFE",w/2,211,p);
 
             playRect.set(w/2-190,250,w/2+190,330);
             howRect.set(w/2-145,350,w/2+145,405);
@@ -483,6 +484,8 @@ public class MainActivity extends Activity {
             p.setTextAlign(Paint.Align.CENTER);
             p.setColor(Color.WHITE);
             p.setTextSize(18);
+            p.setColor(Color.rgb(255,235,150));
+            p.setTextSize(16);
             c.drawText("VIRA",w/2,197,p);
             if(vira!=null){
                 p.setTextSize(48);
@@ -642,8 +645,8 @@ public class MainActivity extends Activity {
         }
 
         void drawHand(Canvas c,float x,float y){
-            float gap=86;
-            float cardW=96, cardH=126;
+            float gap=92;
+            float cardW=106, cardH=140;
             float start=x-(players[0].hand.size()-1)*gap/2f-cardW/2f;
             for(int i=0;i<players[0].hand.size();i++){
                 float left=start+i*gap;
@@ -651,27 +654,34 @@ public class MainActivity extends Activity {
                 drawCard(c,players[0].hand.get(i),left,y,cardW,cardH,false);
             }
             p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(14);
-            c.drawText("SUAS CARTAS — toque para jogar",x,y+132,p);
+            c.drawText("SUAS CARTAS  •  TOQUE PARA JOGAR",x,y+146,p);
         }
 
         void drawCard(Canvas c,Card card,float x,float y,float cw,float ch,boolean table){
-            // Cartas pretas, com alto contraste e borda clara.
+            // Estilo de carta inspirado em apps modernos de truco: branca, limpa e muito legível.
             p.setStyle(Paint.Style.FILL);
-            p.setColor(Color.rgb(9,10,11));
-            c.drawRoundRect(x,y,x+cw,y+ch,12,12,p);
+            p.setColor(Color.WHITE);
+            c.drawRoundRect(x+2,y+4,x+cw+2,y+ch+5,13,13,p);
+
+            p.setColor(Color.argb(80,0,0,0));
+            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
+
+            p.setColor(Color.WHITE);
+            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
 
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(table?3:2);
-            p.setColor(Color.rgb(225,230,225));
-            c.drawRoundRect(x,y,x+cw,y+ch,12,12,p);
+            p.setColor(Color.rgb(25,35,30));
+            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
             p.setStyle(Paint.Style.FILL);
 
-            int textColor=(card.suit.equals("♥")||card.suit.equals("♦"))?Color.rgb(255,95,105):Color.WHITE;
+            int textColor=(card.suit.equals("♥")||card.suit.equals("♦"))?Color.rgb(205,35,45):Color.rgb(20,25,25);
             p.setColor(textColor);p.setTextAlign(Paint.Align.CENTER);
-            p.setTextSize(table?19:23);c.drawText(card.rank,x+cw/2,y+31,p);
-            p.setTextSize(table?24:28);c.drawText(card.suit,x+cw/2,y+66,p);
-            p.setTextSize(9);p.setColor(Color.rgb(150,160,155));
-            c.drawText("TRUCO",x+cw/2,y+ch-8,p);
+            p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+            p.setTextSize(table?28:32);c.drawText(card.rank,x+cw/2,y+38,p);
+            p.setTextSize(table?38:44);c.drawText(card.suit,x+cw/2,y+82,p);
+            p.setTextSize(table?9:10);p.setColor(Color.rgb(95,105,100));
+            c.drawText("TRUCO",x+cw/2,y+ch-9,p);
         }
 
         @Override public boolean onTouchEvent(MotionEvent e){

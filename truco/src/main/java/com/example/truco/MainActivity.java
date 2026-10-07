@@ -51,6 +51,9 @@ public class MainActivity extends Activity {
         RectF playRect=new RectF(), howRect=new RectF(), settingsRect=new RectF(), backRect=new RectF(), menuGameRect=new RectF(), menuBackGameRect=new RectF(), restartGameRect=new RectF();
         RectF easyRect=new RectF(), normalRect=new RectF(), hardRect=new RectF();
         int difficulty=2; String mode="PAULISTA"; RectF paulistaRect=new RectF(), mineiroRect=new RectF();
+        HashMap<String,Integer> rivalRaises=new HashMap<>(), rivalFolds=new HashMap<>(), rivalBluffs=new HashMap<>();
+        ArrayList<String> trickHistory=new ArrayList<>();
+        int opponentAggression=0, opponentFoldsToRaise=0, opponentSuccessfulBluffs=0;
 
         TrucoView(Context c){
             super(c);
@@ -72,7 +75,8 @@ public class MainActivity extends Activity {
         }
 
         void newHand(int first){
-            deck.clear(); trick.clear(); trickWinners.clear(); seenCards.clear();
+            deck.clear();
+            trickHistory.clear(); opponentAggression=0; opponentFoldsToRaise=0; opponentSuccessfulBluffs=0; trick.clear(); trickWinners.clear(); seenCards.clear();
             stake=mode.equals("MINEIRO")?2:1; tricksA=tricksB=0; trickNo=1; waiting=false; elevenDecision=false; pendingRaise=false; proposedStake=0;
             for(Player pl:players) pl.hand.clear();
             buildDeck(); Collections.shuffle(deck,rnd);
@@ -157,6 +161,35 @@ public class MainActivity extends Activity {
             if(teammateWinning(pl)) p+=12;
             if(trick.size()==0 && max>=100) p+=10;
             return Math.min(97,p);
+        }
+
+        int unseenCountForRank(String rank){ int n=0; for(Card c:deck) if(c.rank.equals(rank) && !seenCards.contains(c)) n++; return n; }
+
+        boolean isLikelyBluff(Player pl){
+            int score=handScore(pl); int win=winProbability(pl);
+            return score<42 && win<58;
+        }
+
+        int strategicScore(Player pl){
+            int base=handScore(pl); int win=winProbability(pl);
+            int pressure=(teamBPoints-teamAPoints)*3;
+            if(pl==p0) pressure=(teamAPoints-teamBPoints)*3;
+            int aggression=opponentAggression*2-opponentFoldsToRaise;
+            return base+win/3+pressure+aggression;
+        }
+
+        int chooseProfessionalCard(Player pl){
+            if(pl.hand.size()==1) return 0;
+            int best=0, bestVal=Integer.MAX_VALUE;
+            for(int i=0;i<pl.hand.size();i++){
+                Card c=pl.hand.get(i); int v=strength(c);
+                boolean saveManilha=manilha(c) && pl.hand.size()>1;
+                int cost=v + (saveManilha?25:0);
+                if(trick.size()>0 && teammateWinning(pl) && v<60) cost-=18;
+                if(trick.size()==0 && v>=100) cost+=12;
+                if(cost<bestVal){bestVal=cost;best=i;}
+            }
+            return best;
         }
 
         int handScore(Player pl){
@@ -287,6 +320,7 @@ public class MainActivity extends Activity {
         }
 
         void resolveTrick(){
+            trickHistory.add("v"+trickNo+":"+trick.size()+"@"+stake);
             int best=-1,bestStrength=-1; boolean tie=false;
             for(Played x:trick){
                 int st=strength(x.card);

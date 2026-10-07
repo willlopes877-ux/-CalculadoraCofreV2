@@ -141,9 +141,9 @@ public class MainActivity extends Activity {
             int bluffChance=difficulty==1?18:difficulty==2?28:38;
             int saveChance=difficulty==1?35:difficulty==2?55:72;
 
-            // IA avalia estado da partida e não joga aleatoriamente.
-            if(own+opp>=9 && own<opp) pl.mood=Math.min(100,pl.mood+12);
-            if(own>opp+3) pl.mood=Math.max(0,pl.mood-7);
+            // IA estratégica: considera placar, força da mão, vaza atual e preservação de cartas.
+            if(own+opp>=9 && own<opp) pl.mood=Math.min(100,pl.mood+10);
+            if(own>opp+3) pl.mood=Math.max(0,pl.mood-5);
 
             if(man>0 && (stake==1 || pl.mood>68)) return sorted.get(sorted.size()-1);
             if(strong>=2 && stake==1 && rnd.nextInt(100)<saveChance)

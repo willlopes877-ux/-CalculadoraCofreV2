@@ -635,101 +635,105 @@ public class MainActivity extends Activity {
 
         void drawGame(Canvas c){
             float w=getWidth(),h=getHeight();
-            c.drawColor(Color.rgb(18,110,68));
+            c.drawColor(Color.rgb(30,126,68));
 
-            // CABEÇALHO MUITO VISÍVEL: placar e VIRA ficam sempre no topo.
-            p.setColor(Color.rgb(8,35,23));
-            c.drawRect(0,0,w,192,p);
-
-            menuGameRect.set(10,10,88,48);
-            button(c,menuGameRect,"☰",Color.rgb(42,58,50),18);
-            menuBackGameRect.set(8,55,112,97);
-            restartGameRect.set(118,55,230,97);
-            button(c,menuBackGameRect,"MENU",Color.rgb(42,58,50),13);
-            button(c,restartGameRect,"REINICIAR",Color.rgb(55,75,60),13);
-
-            p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(Color.WHITE);
-            p.setTextSize(27);
-            c.drawText("TRUCO "+mode,w/2,32,p);
-
-            // Placar grande.
-            p.setTextSize(28);
-            p.setColor(Color.rgb(255,235,150));
-            c.drawText("VOCÊ + PARCEIRA",w/4,75,p);
-            p.setColor(Color.WHITE);
-            c.drawText("RIVAIS",w*3/4,75,p);
-            p.setTextSize(44);
-            p.setColor(Color.WHITE);
-            c.drawText(String.valueOf(teamAPoints),w/4,118,p);
-            c.drawText(String.valueOf(teamBPoints),w*3/4,118,p);
-            p.setTextSize(28);
-            p.setColor(Color.rgb(220,225,220));
-            c.drawText("×",w/2,116,p);
-
-            p.setTextSize(13);
-            c.drawText("MÃO "+round+"   •   VALE "+stake+"   •   VAZAS "+tricksA+" × "+tricksB,w/2,151,p);
-            p.setTextSize(11); p.setColor(Color.rgb(255,235,150));
-            c.drawText("IA MESTRE: "+aiStyleName(),w/2,173,p);
-
-            // VIRA: área fixa e bem destacada, separada da mesa.
-            float vx=w/2-55, vy=205, vw=110, vh=145;
-            p.setColor(Color.rgb(5,25,16));
-            c.drawRoundRect(vx-9,vy-9,vx+vw+9,vy+vh+9,18,18,p);
-            p.setColor(Color.rgb(255,220,70));
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(3);
-            c.drawRoundRect(vx-6,vy-6,vx+vw+6,vy+vh+6,15,15,p);
+            // Campo verde com textura discreta, mantendo a mesa limpa e legível.
             p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(33,132,70));
+            c.drawRect(0,0,w,h,p);
+            p.setColor(Color.argb(22,255,255,255));
+            for(int i=0;i<10;i++){
+                float yy=170+i*(h-300)/10f;
+                c.drawRect(0,yy,w,yy+((h-300)/20f),p);
+            }
+            p.setColor(Color.argb(35,0,35,15));
+            c.drawRoundRect(10,165,w-10,h-160,35,35,p);
+
+            // Cabeçalho escuro e compacto, com placar em destaque.
+            float headerH=Math.max(145,h*0.115f);
+            p.setColor(Color.rgb(13,25,45));
+            c.drawRect(0,0,w,headerH,p);
+            p.setColor(Color.rgb(27,42,64));
+            c.drawRoundRect(10,9,57,48,12,12,p);
+            menuGameRect.set(10,9,57,48);
+            p.setColor(Color.WHITE);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(24);
+            c.drawText("⚙",33.5f,37,p);
+            menuBackGameRect.set(7,headerH-38,Math.min(92,w*.27f),headerH-7);
+            restartGameRect.set(Math.min(98,w*.29f),headerH-38,Math.min(202,w*.57f),headerH-7);
+            button(c,menuBackGameRect,"MENU",Color.rgb(43,58,78),11);
+            button(c,restartGameRect,"REINICIAR",Color.rgb(43,58,78),10);
+
+            float scoreY=headerH*.39f;
+            float leftCenter=w*.25f,rightCenter=w*.75f;
             p.setTextAlign(Paint.Align.CENTER);
-            p.setColor(Color.WHITE);
-            p.setTextSize(18);
-            p.setColor(Color.rgb(255,235,150));
-            p.setTextSize(16);
-            c.drawText("VIRA",w/2,197,p);
+            p.setColor(Color.rgb(255,221,102));p.setTextSize(Math.max(12,w*.027f));
+            c.drawText("NÓS",leftCenter,scoreY,p);
+            c.drawText("ELES",rightCenter,scoreY,p);
+            p.setColor(Color.WHITE);p.setTextSize(Math.max(25,w*.065f));
+            c.drawText(String.valueOf(teamAPoints),leftCenter,scoreY+34,p);
+            c.drawText(String.valueOf(teamBPoints),rightCenter,scoreY+34,p);
+            p.setColor(Color.rgb(170,190,210));p.setTextSize(18);c.drawText("×",w/2,scoreY+30,p);
+
+            p.setColor(Color.rgb(215,225,238));p.setTextSize(Math.max(10,w*.025f));
+            c.drawText("MÃO "+round+"  •  VALE "+stake+"  •  VAZAS "+tricksA+" × "+tricksB,w/2,headerH-45,p);
+            p.setColor(Color.rgb(255,221,102));p.setTextSize(10);
+            c.drawText("IA MESTRE: "+aiStyleName(),w/2,headerH-25,p);
+
+            // Botões de acesso rápido ficam discretos no topo.
+            float fieldTop=headerH+10;
+            float avatarR=Math.min(35,w*.085f);
+            float topY=fieldTop+avatarR+8;
+            float sideY=Math.min(h*.43f,fieldTop+ h*.28f);
+            drawOpponent(c,players[2],w/2,topY);
+            drawTeammate(c,players[1],Math.max(avatarR+8,w*.12f),sideY);
+            drawOpponent(c,players[3],Math.min(w-avatarR-8,w*.88f),sideY);
+
+            // VIRA central, com contorno dourado e tamanho adaptado à tela.
+            float vw=Math.min(88,w*.22f),vh=vw*1.34f;
+            float vx=w/2-vw/2,vy=Math.max(fieldTop+avatarR*2+32,h*.405f);
+            vy=Math.min(vy,h-350);
+            p.setColor(Color.argb(100,0,20,10));
+            c.drawRoundRect(vx-7,vy-7,vx+vw+7,vy+vh+7,14,14,p);
+            p.setColor(Color.rgb(255,211,70));p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.5f);
+            c.drawRoundRect(vx-4,vy-4,vx+vw+4,vy+vh+4,12,12,p);p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.rgb(255,230,130));p.setTextSize(13);
+            c.drawText("VIRA",w/2,vy-12,p);
             if(vira!=null && mode.equals("PAULISTA")){
-                p.setTextSize(48);
-                int vc=(vira.suit.equals("♥")||vira.suit.equals("♦"))?Color.rgb(255,90,100):Color.WHITE;
-                p.setColor(vc);
-                c.drawText(vira.rank,w/2,238,p);
-                p.setTextSize(58);
-                c.drawText(vira.suit,w/2,286,p);
-                p.setTextSize(14);
-                p.setColor(Color.rgb(255,235,150));
-                c.drawText("MANILHA = "+nextRank(vira.rank),w/2,350,p);
+                int vc=(vira.suit.equals("♥")||vira.suit.equals("♦"))?Color.rgb(205,35,45):Color.rgb(20,25,25);
+                p.setColor(vc);p.setTextSize(vw*.42f);c.drawText(vira.rank,w/2,vy+vh*.34f,p);
+                p.setTextSize(vw*.52f);c.drawText(vira.suit,w/2,vy+vh*.70f,p);
+                p.setColor(Color.rgb(255,230,130));p.setTextSize(10);
+                c.drawText("MANILHA "+nextRank(vira.rank),w/2,vy+vh+17,p);
+            } else if(mode.equals("MINEIRO")){
+                p.setColor(Color.rgb(255,230,130));p.setTextSize(10);
+                c.drawText("MANILHAS FIXAS",w/2,vy+vh+17,p);
             }
 
-            // Jogadores ficam abaixo da VIRA, sem cobrir a carta virada.
-            drawOpponent(c,players[2],w/2,342);
-            drawTeammate(c,players[1],62,347);
-            drawOpponent(c,players[3],w-62,347);
-
-            // Mesa.
-            p.setColor(Color.argb(90,0,0,0));
-            c.drawRoundRect(18,425,w-18,665,24,24,p);
-            p.setColor(Color.WHITE);
-            p.setTextSize(14);
-            c.drawText("MESA / VAZA "+trickNo,w/2,417,p);
+            // Área central onde as cartas jogadas permanecem visíveis.
+            float tableTop=Math.min(h*.52f,vy+vh+36);
+            p.setColor(Color.argb(55,0,25,12));
+            c.drawRoundRect(12,tableTop,w-12,Math.min(h-220,tableTop+145),22,22,p);
+            p.setColor(Color.WHITE);p.setTextSize(12);
+            c.drawText("MESA  •  VAZA "+trickNo,w/2,tableTop-7,p);
             drawPlayedCards(c,w,h);
 
-            p.setTextSize(14);
-            p.setColor(Color.WHITE);
-            c.drawText(status,w/2,678,p);
+            p.setColor(Color.WHITE);p.setTextSize(12);
+            c.drawText(status,w/2,Math.min(h-215,tableTop+155),p);
 
-            drawHand(c,w/2,h-185);
-
-            // Botão TRUCO fica no lado direito, separado das cartas da mão.
-            trucoRect.set(w-125,h-165,w-15,h-101);
-            button(c,trucoRect,"TRUCO!",Color.rgb(190,45,45),18);
+            // Cartas do jogador e ações na faixa inferior.
+            float handY=h-190;
+            drawHand(c,w/2,handY);
+            trucoRect.set(w-112,h-104,w-10,h-48);
+            button(c,trucoRect,"TRUCO!",Color.rgb(190,43,48),15);
             if(mode.equals("PAULISTA") && trickNo>1 && current==0 && !pendingRaise){
-                coverRect.set(w/2-95,h-225,w/2+95,h-165);
-                button(c,coverRect,"COBERTA",Color.rgb(70,80,90),15);
+                coverRect.set(w/2-75,h-102,w/2+75,h-52);
+                button(c,coverRect,"COBERTA",Color.rgb(58,76,97),13);
             }
 
             if(pendingRaise && !raiseByTeamA) drawRaiseDialog(c,w,h);
             if(elevenDecision) draw11(c,w,h);
             if(finished){
-                restartRect.set(w/2-110,h-48,w/2+110,h-12);
+                restartRect.set(w/2-105,h-48,w/2+105,h-12);
                 button(c,restartRect,"NOVA PARTIDA",Color.rgb(38,52,70),14);
             }
         }
@@ -737,40 +741,37 @@ public class MainActivity extends Activity {
         void drawPlayedCards(Canvas c,float w,float h){
             int n=trick.size();
             if(n==0){
-                p.setColor(Color.argb(100,255,255,255));p.setTextSize(14);
-                c.drawText("Jogue uma carta",w/2,365,p);
+                p.setColor(Color.argb(150,255,255,255));p.setTextSize(12);
+                c.drawText("As cartas jogadas aparecem aqui",w/2,Math.min(h*.68f,h-245),p);
                 return;
             }
-
-            // Cada carta aparece diretamente na frente do jogador que a jogou.
-            // Mantemos o mesmo tamanho da VIRA: 96 x 126.
-            final float cw=110, ch=145;
+            final float cw=Math.min(76,w*.19f),ch=cw*1.34f;
+            float fieldTop=Math.max(160,h*.12f);
+            float topY=fieldTop+Math.min(40,h*.035f);
+            float sideY=Math.min(h*.55f, h*.43f);
             for(int i=0;i<n;i++){
                 Played x=trick.get(i);
-                float left, top;
-
+                float left,top;
                 switch(x.player){
-                    case 0: // Você — carta acima da sua mão
+                    case 0:
                         left=w/2f-cw/2f;
-                        top=h-315;
+                        top=Math.min(h-330,h*.68f);
                         break;
-                    case 1: // Parceira IA — carta na frente do avatar esquerdo
-                        left=62-cw/2f;
-                        top=392;
+                    case 1:
+                        left=Math.max(5,w*.12f-cw/2f);
+                        top=sideY;
                         break;
-                    case 2: // Rival IA de cima — carta na frente do avatar central
+                    case 2:
                         left=w/2f-cw/2f;
-                        top=392;
+                        top=topY;
                         break;
-                    default: // Rival IA da direita — carta na frente do avatar direito
-                        left=w-62-cw/2f;
-                        top=392;
+                    default:
+                        left=Math.min(w-cw-5,w*.88f-cw/2f);
+                        top=sideY;
                         break;
                 }
-
-                // Sombra para destacar a carta sobre a mesa.
                 p.setColor(Color.argb(150,0,0,0));
-                c.drawRoundRect(left-4,top+5,left+cw+4,top+ch+7,14,14,p);
+                c.drawRoundRect(left-3,top+4,left+cw+3,top+ch+5,10,10,p);
                 if(x.covered) drawCoveredCard(c,left,top,cw,ch); else drawCard(c,x.card,left,top,cw,ch,true);
             }
         }
@@ -857,16 +858,18 @@ public class MainActivity extends Activity {
         }
 
         void drawHand(Canvas c,float x,float y){
-            float gap=92;
-            float cardW=106, cardH=140;
-            float start=x-(players[0].hand.size()-1)*gap/2f-cardW/2f;
-            for(int i=0;i<players[0].hand.size();i++){
+            float w=getWidth();
+            float cardW=Math.min(91,w*.235f),cardH=cardW*1.32f;
+            float gap=Math.min(cardW*.88f,w*.205f);
+            float count=players[0].hand.size();
+            float start=x-(count-1)*gap/2f-cardW/2f;
+            for(int i=0;i<count;i++){
                 float left=start+i*gap;
                 cardRects[i]=new RectF(left,y,left+cardW,y+cardH);
                 drawCard(c,players[0].hand.get(i),left,y,cardW,cardH,false);
             }
-            p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(14);
-            c.drawText("SUAS CARTAS  •  TOQUE PARA JOGAR",x,y+146,p);
+            p.setTextAlign(Paint.Align.CENTER);p.setColor(Color.WHITE);p.setTextSize(11);
+            c.drawText("SUAS CARTAS  •  TOQUE PARA JOGAR",x,y+cardH+15,p);
         }
 
         void drawCoveredCard(Canvas c,float x,float y,float cw,float ch){

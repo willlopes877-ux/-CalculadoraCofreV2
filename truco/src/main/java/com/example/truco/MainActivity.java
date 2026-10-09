@@ -677,7 +677,7 @@ public class MainActivity extends Activity {
             p.setColor(Color.rgb(215,225,238));p.setTextSize(Math.max(10,w*.025f));
             c.drawText("MÃO "+round+"  •  VALE "+stake+"  •  VAZAS "+tricksA+" × "+tricksB,w/2,headerH-45,p);
             p.setColor(Color.rgb(255,221,102));p.setTextSize(10);
-            c.drawText("IA MESTRE: "+aiStyleName(),w/2,headerH-25,p);
+            c.drawText("IA MESTRE • "+aiStyleName()+" • "+(difficulty==3?"DIFÍCIL":difficulty==2?"NORMAL":"FÁCIL"),w/2,headerH-25,p);
 
             // Botões de acesso rápido ficam discretos no topo.
             float fieldTop=headerH+10;
@@ -711,8 +711,10 @@ public class MainActivity extends Activity {
 
             // Área central onde as cartas jogadas permanecem visíveis.
             float tableTop=Math.min(h*.52f,vy+vh+36);
-            p.setColor(Color.argb(55,0,25,12));
-            c.drawRoundRect(12,tableTop,w-12,Math.min(h-220,tableTop+145),22,22,p);
+            p.setColor(Color.argb(65,0,25,12));
+            c.drawRoundRect(12,tableTop,w-12,Math.min(h-220,tableTop+155),22,22,p);
+            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(1.5f);p.setColor(Color.argb(115,235,205,112));
+            c.drawRoundRect(12,tableTop,w-12,Math.min(h-220,tableTop+155),22,22,p);p.setStyle(Paint.Style.FILL);
             p.setColor(Color.WHITE);p.setTextSize(12);
             c.drawText("MESA  •  VAZA "+trickNo,w/2,tableTop-7,p);
             drawPlayedCards(c,w,h);
@@ -745,7 +747,7 @@ public class MainActivity extends Activity {
                 c.drawText("As cartas jogadas aparecem aqui",w/2,Math.min(h*.68f,h-245),p);
                 return;
             }
-            final float cw=Math.min(76,w*.19f),ch=cw*1.34f;
+            final float cw=Math.min(84,w*.205f),ch=cw*1.34f;
             float fieldTop=Math.max(160,h*.12f);
             float topY=fieldTop+Math.min(40,h*.035f);
             float sideY=Math.min(h*.55f, h*.43f);
@@ -891,30 +893,35 @@ public class MainActivity extends Activity {
         }
 
         void drawCard(Canvas c,Card card,float x,float y,float cw,float ch,boolean table){
-            // Estilo de carta inspirado em apps modernos de truco: branca, limpa e muito legível.
+            // Carta premium: sombra, filete dourado, marca de naipe nos cantos e símbolo central escalável.
+            float radius=Math.max(8,Math.min(14,cw*.15f));
             p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(95,0,0,0));
+            c.drawRoundRect(x+3,y+5,x+cw+3,y+ch+5,radius,radius,p);
+            p.setColor(Color.rgb(250,248,239));
+            c.drawRoundRect(x,y,x+cw,y+ch,radius,radius,p);
             p.setColor(Color.WHITE);
-            c.drawRoundRect(x+2,y+4,x+cw+2,y+ch+5,13,13,p);
-
-            p.setColor(Color.argb(80,0,0,0));
-            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
-
-            p.setColor(Color.WHITE);
-            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
-
+            c.drawRoundRect(x+3,y+3,x+cw-3,y+ch-3,Math.max(5,radius-3),Math.max(5,radius-3),p);
             p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(table?3:2);
-            p.setColor(Color.rgb(25,35,30));
-            c.drawRoundRect(x,y,x+cw,y+ch,13,13,p);
+            p.setStrokeWidth(table?2.8f:1.8f);
+            p.setColor(table?Color.rgb(225,177,57):Color.rgb(48,66,55));
+            c.drawRoundRect(x+1.5f,y+1.5f,x+cw-1.5f,y+ch-1.5f,radius,radius,p);
             p.setStyle(Paint.Style.FILL);
 
-            int textColor=(card.suit.equals("♥")||card.suit.equals("♦"))?Color.rgb(205,35,45):Color.rgb(20,25,25);
-            p.setColor(textColor);p.setTextAlign(Paint.Align.CENTER);
-            p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-            p.setTextSize(table?28:32);c.drawText(card.rank,x+cw/2,y+38,p);
-            p.setTextSize(table?38:44);c.drawText(card.suit,x+cw/2,y+82,p);
-            p.setTextSize(table?9:10);p.setColor(Color.rgb(95,105,100));
-            c.drawText("TRUCO",x+cw/2,y+ch-9,p);
+            int ink=(card.suit.equals("♥")||card.suit.equals("♦"))?Color.rgb(196,35,48):Color.rgb(24,32,29);
+            p.setColor(ink);p.setTextAlign(Paint.Align.CENTER);
+            p.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));
+            p.setTextSize(Math.max(15,cw*.30f));
+            c.drawText(card.rank,x+cw*.24f,y+ch*.20f,p);
+            p.setTextSize(Math.max(12,cw*.18f));
+            c.drawText(card.suit,x+cw*.24f,y+ch*.34f,p);
+            p.setTextSize(Math.max(27,cw*.54f));
+            c.drawText(card.suit,x+cw*.52f,y+ch*.61f,p);
+            p.setTextSize(Math.max(12,cw*.25f));
+            c.drawText(card.rank,x+cw*.76f,y+ch*.83f,p);
+            p.setTextSize(Math.max(7,cw*.105f));
+            p.setColor(Color.rgb(125,130,118));
+            c.drawText("TRUCO",x+cw/2,y+ch*.95f,p);
         }
 
         @Override public boolean onTouchEvent(MotionEvent e){
